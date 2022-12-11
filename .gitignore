@@ -1,8 +1,5 @@
-data/plots/*
-data/plots/evaluation_tests/*
-*/__pycache__
-*/*/__pycache__
+data/plots/
+__pycache__
 .idea
 .DS_Store
-
-
+evaluation_tests
