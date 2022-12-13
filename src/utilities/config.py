@@ -57,7 +57,7 @@ SIM_DURATION = 15000   # int: steps of simulation. # ***
 TS_DURATION = 0.150   # float: seconds duration of a step in seconds.
 SEED = 20         # int: seed of this simulation.
 
-N_DRONES = 5      # int: number of drones. # ***
+N_DRONES = 30      # int: number of drones. # ***
 ENV_WIDTH = 1500      # float: meters, width of environment.
 ENV_HEIGHT = 1500     # float: meters, height of environment.
 
@@ -109,7 +109,7 @@ PACKETS_MAX_TTL = 200         # float: threshold in the maximum number of hops. 
 RETRANSMISSION_DELAY = 10     # int: how many time steps to wait before transmit again (for k retransmissions). # ---  #delta_k
 
 # ------------------------------------------- ROUTING MISC --------------------------------- #
-HELLO_DELAY = 5            # int : how many time steps wait before transmit again an hello message
+DISCOVERY_DELAY = 5            # int : how many time steps wait before transmit again an hello message
 RECEPTION_GRANTED = 0.95   # float : the min amount of success to evalute a neigh as relay
 LIL_DELTA = 1              # INT:  > 0
 OLD_HELLO_PACKET = 50

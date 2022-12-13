@@ -184,6 +184,14 @@ class HelloPacket(Packet):
         self.next_target = next_target
         self.src_drone = src_drone  # Don't use this
 
+class DiscoveryPacket(Packet):
+    def __init__(self, sender_id, simulator):
+        self.simulator = simulator
+        self.sender_id = sender_id
+        self.hop_count = 0
+    
+    def update_hop_count(self):
+        self.hop_count += 1
 
 # ------------------ Depot ----------------------
 class Depot(Entity):
@@ -194,6 +202,8 @@ class Depot(Entity):
         self.communication_range = communication_range
 
         self.__buffer = list()  # also with duplicated packets
+
+        self.nodes_table = {} #For discovery of the Multi-UAV nodes information in the whole network
 
     def all_packets(self):
         return self.__buffer
@@ -221,7 +231,16 @@ class Depot(Entity):
             self.simulator.metrics.drones_packets_to_depot.add((pck, cur_step))
             self.simulator.metrics.drones_packets_to_depot_list.append((pck, cur_step))
             pck.time_delivery = cur_step
+    
+    def start_discovery(self):
+        for drone in self.simulator.drones:
+            drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
+            if drone_distance_to_depot <= self.simulator.drone_com_range:
+                drone.nodes_discovery(DiscoveryPacket(self.identifier, self.simulator))
 
+    def update_nodes_table(self, neighbor_table):
+        for ack in neighbor_table:
+            pass
 
 # ------------------ Drone ----------------------
 class Drone(Entity):
@@ -240,6 +259,8 @@ class Drone(Entity):
         self.come_back_to_mission = False  # if i'm coming back to my applicative mission
         self.last_move_routing = False  # if in the last step i was moving to depot
 
+        self.neighbor_table = {} #For discovery of the Multi-UAV nodes information in the neighbor network
+
         # dynamic parameters
         self.tightest_event_deadline = None  # used later to check if there is an event that is about to expire
         self.current_waypoint = 0
@@ -256,6 +277,16 @@ class Drone(Entity):
 
         # last mission coord to restore the mission after movement
         self.last_mission_coords = None
+
+    #TO IMPLEMENT
+    def nodes_discovery(self, sender_pkt):
+        neighbors_table = {}
+        for drone in self.simulator.drones:
+            if drone.identifier not in [self.identifier, sender_pkt.sender_id]:
+                drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
+                if drone_distance_to_depot <= self.simulator.drone_com_range:
+                    print(sender_pkt.sender_id)
+                    #SEND ACK AND UPDATE NEIGHBORS_TABLE
 
     def update_packets(self, cur_step):
         """

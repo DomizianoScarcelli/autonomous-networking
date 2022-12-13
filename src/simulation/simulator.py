@@ -210,6 +210,9 @@ class Simulator:
             # sense the events
             self.event_generator.handle_events_generation(cur_step, self.drones)
 
+            #Start node discovery
+            self.depot.start_discovery()
+
             for drone in self.drones:
                 # 1. update expired packets on drone buffers
                 # 2. try routing packets vs other drones or depot

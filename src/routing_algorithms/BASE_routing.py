@@ -1,4 +1,4 @@
-from src.entities.uav_entities import DataPacket, ACKPacket, HelloPacket, Packet
+from src.entities.uav_entities import DataPacket, ACKPacket, HelloPacket, DiscoveryPacket, Packet
 from src.utilities import utilities as util
 from src.utilities import config
 
@@ -13,7 +13,7 @@ class BASE_routing(metaclass=abc.ABCMeta):
 
         self.drone = drone
         self.current_n_transmission = 0
-        self.hello_messages = {}  # { drone_id : most recent hello packet}
+        self.discovery_messages = {}  # { drone_id : most recent discovery_messages}
         self.network_disp = simulator.network_dispatcher
         self.simulator = simulator
 
@@ -32,7 +32,7 @@ class BASE_routing(metaclass=abc.ABCMeta):
         """ handle reception an ACKs for a packets """
         if isinstance(packet, HelloPacket):
             src_id = packet.src_drone.identifier
-            self.hello_messages[src_id] = packet  # add packet to our dictionary
+            self.discovery_messages[src_id] = packet  # add packet to our dictionary
 
         elif isinstance(packet, DataPacket):
             self.no_transmission = True
@@ -48,11 +48,14 @@ class BASE_routing(metaclass=abc.ABCMeta):
             if self.drone.buffer_length() == 0:
                 self.current_n_transmission = 0
                 self.drone.move_routing = False
+        
+        elif isinstance(packet, DiscoveryPacket):
+            print("disc")
 
     def drone_identification(self, drones, cur_step):
         """ handle drone hello messages to identify neighbors """
         # if self.drone in drones: drones.remove(self.drone)  # do not send hello to yourself
-        if cur_step % config.HELLO_DELAY != 0:  # still not time to communicate
+        if cur_step % config.DISCOVERY_DELAY != 0:  # still not time to communicate
             return
 
         my_hello = HelloPacket(self.drone, cur_step, self.simulator, self.drone.coords,
@@ -90,8 +93,8 @@ class BASE_routing(metaclass=abc.ABCMeta):
         if cur_step % self.simulator.drone_retransmission_delta == 0:
 
             opt_neighbors = []
-            for hpk_id in self.hello_messages:
-                hpk: HelloPacket = self.hello_messages[hpk_id]
+            for hpk_id in self.discovery_messages:
+                hpk: HelloPacket = self.discovery_messages[hpk_id]
 
                 # check if packet is too old
                 if hpk.time_step_creation < cur_step - config.OLD_HELLO_PACKET:
