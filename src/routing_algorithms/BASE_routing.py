@@ -16,6 +16,7 @@ class BASE_routing(metaclass=abc.ABCMeta):
         self.discovery_packets = {}
         self.network_disp = simulator.network_dispatcher # net_routing.MediumDispatcher
         self.simulator = simulator
+        self.neighbor_list = {id: set() for id in range(self.simulator.n_drones)}
 
         if self.simulator.communication_error_type == config.ChannelError.GAUSSIAN:
             self.buckets_probability = self.__init_guassian()
@@ -30,63 +31,86 @@ class BASE_routing(metaclass=abc.ABCMeta):
 
     def initialize_discovery(self, current_ts):
         discovery_packet = DiscoveryPacket(self.simulator.depot, 0, current_ts, self.simulator, None)
-        self.broadcast_message(discovery_packet, self.simulator.depot, self.simulator.drones, current_ts)
+        #TODO: might be useless since this is always done by the depot
+        potential_neighbors = set(self.simulator.drones).difference({self.entity}) 
+        self.broadcast_message(discovery_packet, self.simulator.depot, potential_neighbors, current_ts)
 
     def drone_reception(self, src_drone, packet: Packet, current_ts):
-        """ handle reception an ACKs for a packets """
+        """ Handle receptions of all types of packets by the drone or the depot. """
         if isinstance(packet, DiscoveryPacket):
+            src_id = packet.sender_id.identifier
+            self.discovery_packets[src_id] = packet
+
             # Handles the reception of a discovery packet
+            if packet in self.entity.all_packets(): #TODO: don't know if it's correct
+                    return # The packet has already been accepted by the drone.
+            self.entity.accept_packets([packet])
             if not self.__is_depot():
+                
+
                 # Generates the ack and send it to the sender of the discovery packet.
                 ack_packet_info = {"moving_speed": 10, "location": self.entity.coords, "hop_count_from_depot": packet.hop_count}
                 ack_packet = ACKPacket(packet.sender_id, self.entity, ack_packet_info, packet, current_ts, self.simulator)
                 self.unicast_message(ack_packet, self.entity, packet.sender_id, current_ts)
                 # Accepts the packet and broadcast it to the other drones.
-                self.entity.accept_packets([packet])
                 updated_discovery_packet = DiscoveryPacket(sender_id=self.entity, 
                                                             hop_count=packet.hop_count+1, 
                                                             time_step_creation=current_ts, 
                                                             simulator=self.simulator, 
                                                             event_ref=Event(self.entity.coords, current_ts, self.simulator))
-                self.broadcast_message(updated_discovery_packet, self.entity, self.simulator.drones, current_ts)
+                potential_neighbors = set(self.simulator.drones).difference({self.entity, packet.sender_id})
+                self.broadcast_message(updated_discovery_packet, self.entity, potential_neighbors, current_ts)
 
+                neighbor_list_packet = NeighborPacket(self.entity, current_ts, self.simulator, self.neighbor_list[self.entity.identifier])
+                self.neighbor_list[self.entity.identifier] = set()
+                self.unicast_message(neighbor_list_packet, self.entity, packet.sender_id, current_ts)
         elif isinstance(packet, DataPacket):
             self.no_transmission = True
             self.entity.accept_packets([packet])
             # build ack for the reception
             ack_packet_info = {}
-            ack_packet = ACKPacket(packet.sender_id, self.entity, ack_packet_info, packet, current_ts, self.simulator)
+            ack_packet = ACKPacket(self.entity, src_drone, ack_packet_info, packet, current_ts, self.simulator) #TODO: might be wrong
             self.unicast_message(ack_packet, self.entity, src_drone, current_ts)
 
+
         elif isinstance(packet, ACKPacket):
-            #TODO: Ack is not being received by the drones but only by the depot
             if self.__is_depot():
                 return # The depot does not need to handle acks
-            if not self.entity.waiting_for_ack:
-                self.entity.waiting_for_ack = True
-                self.entity.ACK_WAITING_TIME -= 1
-                self.entity.accept_ack(packet)
-                print(f"ACK received from {packet.sender_id} at {self.entity} at {current_ts}")
-            else:
-                if self.ACK_WAITING_TIME == 0: 
-                    self.entity.waiting_for_ack = False
-                    parent_node = packet.sender_id
-                    neighbor_list_packet = NeighborPacket(current_ts, self.simulator, self.entity.neighbor_list)
-                    print(f"Sending neighbor list to {parent_node} at {current_ts} from {self.entity} with {self.entity.neighbor_list}")
-                    self.unicast_message(neighbor_list_packet, self.entity, parent_node, current_ts)
-
-            # TODO: remove prints
-            # print(f"ACK received from {packet.sender_id} at {self.entity} at {current_ts}")
-            # print(f"Is know for {self.entity.identifier}: {self.entity.is_known_packet(packet)}")
-            self.entity.remove_packets([packet.acked_packet])
-            # packet.acked_packet.optional_data
+            # TODO: Now i'm trying without the ack waiting part, this has to be implemented somehow
+            self.neighbor_list[self.entity.identifier].add(packet.sender_id)
+            self.entity.accept_packets([packet])
+            self.entity.remove_packets([packet.acked_packet]) #TODO: there is a problem since the acked packet is not in the buffer
             # print(self.is_packet_received_drone_reward, "ACK", self.drone.identifier)
-
-            #TODO: when the drone has received all the ack from the neighbors, it can send the neighbor list to the parent
 
             if self.entity.buffer_length() == 0:
                 self.current_n_transmission = 0
                 self.entity.move_routing = False
+
+        elif isinstance(packet, NeighborPacket):
+            print(packet.neighbor_list)
+            #Handle global neighbor table update for the depot
+            if self.__is_depot():
+                
+                pass
+            else:
+                # Handle neighor list update for the drone
+                # new_neighbor_table = packet.neighbor_list
+                # new_neighbor_list = NeighborPacket(self.entity, current_ts, self.simulator, self.entity.neighbor_list)
+                #TODO: this may cause a loop
+                # self.unicast_message(new_neighbor_list, self.entity, parent_node, current_ts)
+                #TODO: this is never called
+                # Handle whole list of neighbors update for the depot
+                #TODO: update neighbor list in a correct way
+                # self.entity.whole_neighbor_table[packet.sender_id.identifier].union(packet.neighbor_list) 
+                # print(self.entity.whole_neighbor_table)
+                new_neighbor_table = packet.neighbor_list
+                new_neighbor_table.union(self.entity.neighbor_list)
+                parent_node = None
+                
+                self.unicast(message=new_neighbor_table, sender=self.entity, receiver=parent_node, current_ts=current_ts)
+                pass
+                
+
 
     # def drone_identification(self, drones, cur_step):
     #     """ handle drone hello messages to identify neighbors """
@@ -103,6 +127,7 @@ class BASE_routing(metaclass=abc.ABCMeta):
     def routing(self, depot, drones, cur_step):
         # set up this routing pass
 
+        #TODO: deactivated for now
         # self.drone_identification(drones, cur_step)
 
         self.send_packets(cur_step)
@@ -130,15 +155,15 @@ class BASE_routing(metaclass=abc.ABCMeta):
 
         if cur_step % self.simulator.drone_retransmission_delta == 0:
 
-            opt_neighbors = []
-            for dpk_id in self.discovery_packets:
-                dpk: DiscoveryPacket = self.discovery_packets[dpk_id]
+            opt_neighbors = [(None, drone) for drone in self.entity.neighbor_list] #TODO: the first element is None, this is a problem
+            # for dpk_id in self.discovery_packets:
+            #     dpk: DiscoveryPacket = self.discovery_packets[dpk_id]
 
-                # check if packet is too old
-                if dpk.time_step_creation < cur_step - config.OLD_HELLO_PACKET:
-                    continue
+            #     # check if packet is too old
+            #     if dpk.time_step_creation < cur_step - config.OLD_HELLO_PACKET:
+            #         continue
 
-                opt_neighbors.append((dpk, dpk.sender_id))
+            #     opt_neighbors.append((dpk, dpk.sender_id))
 
             if len(opt_neighbors) == 0:
                 return

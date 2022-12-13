@@ -165,9 +165,10 @@ class DataPacket(Packet):
 
 
 class NeighborPacket(Packet):
-    def __init__(self, time_step_creation, simulator, neighbor_list,event_ref: Event = None):
+    def __init__(self, sender_id, time_step_creation, simulator, neighbor_list,event_ref: Event = None):
         super().__init__(time_step_creation, simulator, event_ref)
-        self.neihbor_list = neighbor_list
+        self.sender_id = sender_id
+        self.neighbor_list = neighbor_list
 
 
 # class ACKPacket(Packet):
@@ -214,7 +215,7 @@ class Depot(Entity):
         super().__init__(id(self), coords, simulator)
         self.communication_range = communication_range
         self.__buffer = list()  # also with duplicated packets
-
+        self.whole_neighbor_table = {drone_identifier: set() for drone_identifier in range(self.simulator.n_drones)}
         self.routing_algorithm = self.simulator.routing_algorithm.value(self, self.simulator)
 
     def remove_packets(self, packets):
@@ -225,7 +226,7 @@ class Depot(Entity):
                 if config.DEBUG:
                     print("ROUTING del: drone: " + str(self.identifier) + " - removed a packet id: " + str(
                         packet.identifier))
-    
+
     def buffer_length(self):
         return len(self.__buffer)
         
@@ -297,6 +298,20 @@ class Drone(Entity):
         self.ACK_WAITING_TIME = 20
 
         self.waiting_for_acks = False
+
+        self.waiting_start_time = None
+
+
+    def update_ack_wait(self, cur_step):
+        if self.waiting_for_acks and cur_step - self.waiting_start_time > self.ACK_WAITING_TIME:
+            self.waiting_for_acks = False
+            self.waiting_start_time = None
+    
+    def start_ack_wait(self, cur_step):
+        self.waiting_for_acks = True
+        self.waiting_start_time = cur_step
+
+       
 
     def update_packets(self, cur_step):
         """
@@ -379,10 +394,6 @@ class Drone(Entity):
         else:  # store the events that are missing due to movement routing
             self.simulator.metrics.events_not_listened.add(ev)
 
-    def accept_ack(self, packet: ACKPacket):
-        """ process a discovery packet """
-        self.neighbor_list.add(packet.sender)
-        self.accept_packets([packet])
 
     def accept_packets(self, packets):
         """ Self drone adds packets of another drone, when it feels it passing by. """

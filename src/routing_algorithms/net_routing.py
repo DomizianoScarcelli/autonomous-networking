@@ -34,7 +34,6 @@ class MediumDispatcher:
 
         for i in range(len(original_self_packets)):
             packet, src_drone, dst_drone, to_send_ts = original_self_packets[i]
-            packet, 
 
             if to_send_ts == current_ts:  # time to send this packet
                 to_drop_indices.append(i)
