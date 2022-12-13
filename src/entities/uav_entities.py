@@ -164,15 +164,28 @@ class DataPacket(Packet):
         super().__init__(time_step_creation, simulator, event_ref)
 
 
+class NeighborPacket(Packet):
+    def __init__(self, time_step_creation, simulator, neighbor_list,event_ref: Event = None):
+        super().__init__(time_step_creation, simulator, event_ref)
+        self.neihbor_list = neighbor_list
+
+
+# class ACKPacket(Packet):
+#     def __init__(self, src_drone, dst_drone, simulator, acked_packet, time_step_creation=None):
+#         super().__init__(time_step_creation, simulator, None)
+#         self.acked_packet = acked_packet  # packet that the drone who creates it wants to ACK
+
+#         # source and destination of a packet
+#         self.src_drone = src_drone
+#         self.dst_drone = dst_drone
+
 class ACKPacket(Packet):
-    def __init__(self, src_drone, dst_drone, simulator, acked_packet, time_step_creation=None):
+    def __init__(self, target_id, sender_id, node_info, acked_packet, time_step_creation, simulator):
         super().__init__(time_step_creation, simulator, None)
-        self.acked_packet = acked_packet  # packet that the drone who creates it wants to ACK
-
-        # source and destination of a packet
-        self.src_drone = src_drone
-        self.dst_drone = dst_drone
-
+        self.acked_packet = acked_packet
+        self.target_id = target_id
+        self.sender_id = sender_id
+        self.node_info = node_info
 
 class HelloPacket(Packet):
     """ The hello message is responsible to give info about neighborhood """
@@ -184,6 +197,14 @@ class HelloPacket(Packet):
         self.next_target = next_target
         self.src_drone = src_drone  # Don't use this
 
+class DiscoveryPacket(Packet):
+    "The discovery packet is a packet that is sent to discover the neighbors of a drone"
+
+    def __init__(self, sender_id, hop_count, time_step_creation, simulator, event_ref):
+        super().__init__(time_step_creation, simulator, event_ref)
+        self.sender_id = sender_id
+        self.hop_count = hop_count
+
 
 # ------------------ Depot ----------------------
 class Depot(Entity):
@@ -192,9 +213,22 @@ class Depot(Entity):
     def __init__(self, coords, communication_range, simulator):
         super().__init__(id(self), coords, simulator)
         self.communication_range = communication_range
-
         self.__buffer = list()  # also with duplicated packets
 
+        self.routing_algorithm = self.simulator.routing_algorithm.value(self, self.simulator)
+
+    def remove_packets(self, packets):
+        """ Removes the packets from the buffer. """
+        for packet in packets:
+            if packet in self.__buffer:
+                self.__buffer.remove(packet)
+                if config.DEBUG:
+                    print("ROUTING del: drone: " + str(self.identifier) + " - removed a packet id: " + str(
+                        packet.identifier))
+    
+    def buffer_length(self):
+        return len(self.__buffer)
+        
     def all_packets(self):
         return self.__buffer
 
@@ -257,6 +291,12 @@ class Drone(Entity):
 
         # last mission coord to restore the mission after movement
         self.last_mission_coords = None
+
+        self.neighbor_list = set()
+
+        self.ACK_WAITING_TIME = 20
+
+        self.waiting_for_acks = False
 
     def update_packets(self, cur_step):
         """
@@ -339,6 +379,11 @@ class Drone(Entity):
         else:  # store the events that are missing due to movement routing
             self.simulator.metrics.events_not_listened.add(ev)
 
+    def accept_ack(self, packet: ACKPacket):
+        """ process a discovery packet """
+        self.neighbor_list.add(packet.sender)
+        self.accept_packets([packet])
+
     def accept_packets(self, packets):
         """ Self drone adds packets of another drone, when it feels it passing by. """
 
@@ -346,8 +391,9 @@ class Drone(Entity):
             # add if not notified yet, else don't, proprietary drone will delete all packets, but it is ok
             # because they have already been notified by someone already
 
-            if not self.is_known_packet(packet):
+            if not self.is_known_packet(packet) and packet not in self.__buffer:
                 self.__buffer.append(packet)
+    
 
     def routing(self, drones, depot, cur_step):
         """ do the routing """

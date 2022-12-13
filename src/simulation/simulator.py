@@ -5,6 +5,7 @@ from src.utilities import config, utilities
 from src.routing_algorithms.net_routing import MediumDispatcher
 from collections import defaultdict
 from tqdm import tqdm
+from src.routing_algorithms.random_routing import RandomRouting
 
 import numpy as np
 import math
@@ -198,9 +199,14 @@ class Simulator:
         @return: None
         """
 
-        for cur_step in tqdm(range(self.len_simulation)):
-            
+        for cur_step in range(self.len_simulation):
+                        
             self.cur_step = cur_step
+
+            # Depot initialize the discovery
+            random_router = RandomRouting(self.depot, self)
+            random_router.initialize_discovery(self.cur_step)
+
             # check for new events and remove the expired ones from the environment
             # self.environment.update_events(cur_step)
             # sense the area and move drones and sense the area

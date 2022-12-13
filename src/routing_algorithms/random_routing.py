@@ -16,3 +16,6 @@ class RandomRouting(BASE_routing):
         """
 
         return self.simulator.rnd_routing.choice([v[1] for v in opt_neighbors])
+
+    def initialize_discovery(self, current_ts):
+        return super().initialize_discovery(current_ts)

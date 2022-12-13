@@ -5,7 +5,7 @@ from src.utilities import utilities as util
 class QLearningRouting(BASE_routing):
 
     def __init__(self, drone, simulator):
-        BASE_routing.__init__(self, drone=drone, simulator=simulator)
+        BASE_routing.__init__(self, drone, simulator=simulator)
         self.taken_actions = {}  # id event : (old_state, old_action)
 
     def feedback(self, drone, id_event, delay, outcome):
@@ -31,7 +31,7 @@ class QLearningRouting(BASE_routing):
             # TIPS: implement here the q-table updating process
 
             # Drone id and Taken actions
-            print(f"\nIdentifier: {self.drone.identifier}, Taken Actions: {self.taken_actions}, Time Step: {self.simulator.cur_step}")
+            print(f"\nIdentifier: {self.entity.identifier}, Taken Actions: {self.taken_actions}, Time Step: {self.simulator.cur_step}")
 
             # feedback from the environment
             print(drone, id_event, delay, outcome)
