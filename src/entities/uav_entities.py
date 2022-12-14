@@ -185,13 +185,50 @@ class HelloPacket(Packet):
         self.src_drone = src_drone  # Don't use this
 
 class DiscoveryPacket(Packet):
-    def __init__(self, sender_id, simulator):
+    def __init__(self, entity, simulator): #Can't inherit simulator from superclass Packet (?)
         self.simulator = simulator
-        self.sender_id = sender_id
-        self.hop_count = 0
+        self.entity = entity
+        self.hop_count = 1
     
     def update_hop_count(self):
         self.hop_count += 1
+
+class AckDiscoveryPacket(): #Error here instanting it as a Packet (?)
+    def __init__(self, sender_id, self_id, self_moving_speed, self_location, hop_count, simulator):
+        self.simulator = simulator
+        self.sender_id = sender_id
+        self.self_id = self_id
+        self.self_moving_speed = self_moving_speed
+        self.self_location = self_location
+        self.hop_count = hop_count
+
+# --------------- Nodes Table -------------------
+class NodeInfo():
+    def __init__(self, self_id, self_moving_speed, self_location, hop_count):
+        self.self_id = self_id
+        self.self_moving_speed = self_moving_speed
+        self.self_location = self_location
+        self.hop_count = hop_count
+
+class NodesTable():
+    def __init__(self):
+        self.nodes_list = {}
+
+    def add_node(self, node: NodeInfo):
+        try:
+            self.nodes_list[node.self_id]
+        except:
+            self.nodes_list[node.self_id] = node
+
+class NeighborTable():
+    def __init__(self):
+        self.neighbors_list = {}
+
+    def add_node(self, node: NodeInfo):
+        try:
+            self.neighbors_list[node.self_id]
+        except:
+            self.neighbors_list[node.self_id] = node
 
 # ------------------ Depot ----------------------
 class Depot(Entity):
@@ -203,7 +240,7 @@ class Depot(Entity):
 
         self.__buffer = list()  # also with duplicated packets
 
-        self.nodes_table = {} #For discovery of the Multi-UAV nodes information in the whole network
+        self.nodes_table = NodesTable() #For discovery of the Multi-UAV nodes information in the whole network
 
     def all_packets(self):
         return self.__buffer
@@ -233,14 +270,25 @@ class Depot(Entity):
             pck.time_delivery = cur_step
     
     def start_discovery(self):
+        self.reset_discovery_info()
         for drone in self.simulator.drones:
             drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
             if drone_distance_to_depot <= self.simulator.drone_com_range:
-                drone.nodes_discovery(DiscoveryPacket(self.identifier, self.simulator))
+                neighbors_table = {}
+                drone.nodes_discovery(DiscoveryPacket(self, self.simulator), neighbors_table)
 
-    def update_nodes_table(self, neighbor_table):
-        for ack in neighbor_table:
-            pass
+    def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
+        node_info = NodeInfo(ack_packet.self_id, ack_packet.self_moving_speed, ack_packet.self_location, ack_packet.hop_count)
+        self.nodes_table.add_node(node_info)
+
+    def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable):
+        for neighbor_info in neighbor_table:
+            node_info = NodeInfo(neighbor_info.self_id, neighbor_info.self_moving_speed, neighbor_info.self_location, neighbor_info.hop_count)
+            if node_info.self_id not in self.nodes_table.nodes_list:
+                self.nodes_table.add_node(node_info)
+    
+    def reset_discovery_info(self):
+        self.nodes_table = NodesTable()
 
 # ------------------ Drone ----------------------
 class Drone(Entity):
@@ -259,8 +307,6 @@ class Drone(Entity):
         self.come_back_to_mission = False  # if i'm coming back to my applicative mission
         self.last_move_routing = False  # if in the last step i was moving to depot
 
-        self.neighbor_table = {} #For discovery of the Multi-UAV nodes information in the neighbor network
-
         # dynamic parameters
         self.tightest_event_deadline = None  # used later to check if there is an event that is about to expire
         self.current_waypoint = 0
@@ -278,15 +324,52 @@ class Drone(Entity):
         # last mission coord to restore the mission after movement
         self.last_mission_coords = None
 
+        #True if the drone has never received a discovery packet
+        self.discovery_packet_first_received = True
+
+        #Neighbor_table
+        self.neighbor_table = NeighborTable() #For discovery of the Multi-UAV nodes information in the neighbor network
+
     #TO IMPLEMENT
-    def nodes_discovery(self, sender_pkt):
-        neighbors_table = {}
-        for drone in self.simulator.drones:
-            if drone.identifier not in [self.identifier, sender_pkt.sender_id]:
-                drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
-                if drone_distance_to_depot <= self.simulator.drone_com_range:
-                    print(sender_pkt.sender_id)
-                    #SEND ACK AND UPDATE NEIGHBORS_TABLE
+    def nodes_discovery(self, discovery_packet, neighbors_info):
+        if self.discovery_packet_first_received:
+            self.discovery_packet_first_received = False
+            #Parent_node = Discovery_packet. Sender_ID
+            parent_node = discovery_packet.entity.identifier
+            ## GenerateAck + Unicast(Ack, Parent_node)
+            self.send_ack_unicast(AckDiscoveryPacket(parent_node, self.identifier, self.speed, self.coords, discovery_packet.hop_count+1, self.simulator), discovery_packet.entity)
+            ## Modify Discovery_packet:
+            discovery_packet.entity = self
+            discovery_packet.update_hop_count()
+            #Broadcast(Discovery_packet)
+            for drone in self.simulator.drones:
+                if drone.identifier not in [self.identifier, parent_node]:
+                    drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
+                    if drone_distance_to_depot <= self.simulator.drone_com_range:
+                        drone.nodes_discovery(discovery_packet, neighbors_info)
+            self.update_nodes_table_by_neighbor_table(self.neighbor_table, discovery_packet.entity)
+            
+
+    def send_ack_unicast(self, ack_packet: AckDiscoveryPacket, parent_node):
+        parent_node.update_nodes_table_by_ack(ack_packet)
+    
+    def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable, parent_node):
+        for _, neighbor_info in neighbor_table.neighbors_list.items():
+            node_info = NodeInfo(neighbor_info.self_id, neighbor_info.self_moving_speed, neighbor_info.self_location, neighbor_info.hop_count)
+            if isinstance(parent_node, Drone) == Drone:
+                if node_info.self_id not in parent_node.neighbor_table.nodes_list:
+                    parent_node.neighbor_table.add_node(node_info)
+            elif isinstance(parent_node, Depot):
+                if node_info.self_id not in parent_node.nodes_table.nodes_list:
+                    parent_node.nodes_table.add_node(node_info)
+
+    def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
+        node_info = NodeInfo(ack_packet.self_id, ack_packet.self_moving_speed, ack_packet.self_location, ack_packet.hop_count)
+        self.neighbor_table.add_node(node_info)
+
+    def reset_discovery_info(self):
+        self.discovery_packet_first_received = True
+        self.neighbor_table = NeighborTable()
 
     def update_packets(self, cur_step):
         """

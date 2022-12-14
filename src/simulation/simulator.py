@@ -210,7 +210,7 @@ class Simulator:
             # sense the events
             self.event_generator.handle_events_generation(cur_step, self.drones)
 
-            #Start node discovery
+            # Start node discovery
             self.depot.start_discovery()
 
             for drone in self.drones:
@@ -222,6 +222,9 @@ class Simulator:
                 drone.update_packets(cur_step)
                 drone.routing(self.drones, self.depot, cur_step)
                 drone.move(self.time_step_duration)
+
+            '''To delete: print nodes table'''
+            print(str(cur_step) + str(self.depot.nodes_table.nodes_list))
 
             # in case we need probability map
             if config.ENABLE_PROBABILITIES:
