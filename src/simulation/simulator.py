@@ -81,6 +81,8 @@ class Simulator:
         # Setup vari
         # for stats
         self.metrics = Metrics(self)
+        
+        self.number_of_packets = 0
 
         # setup network
         self.__setup_net_dispatcher()
@@ -200,12 +202,14 @@ class Simulator:
         """
 
         for cur_step in range(self.len_simulation):
+
+            print(f"Number of packets: {self.number_of_packets} at time_step: {cur_step}") #TODO: way too many packets
                         
             self.cur_step = cur_step
 
             # Depot initialize the discovery
-            random_router = RandomRouting(self.depot, self)
-            random_router.initialize_discovery(self.cur_step)
+            if cur_step == 0 or cur_step % 100 == 0:
+                self.depot.routing_algorithm.initialize_discovery(self.cur_step)
 
             # check for new events and remove the expired ones from the environment
             # self.environment.update_events(cur_step)

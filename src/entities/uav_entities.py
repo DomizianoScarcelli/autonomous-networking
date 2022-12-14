@@ -181,8 +181,8 @@ class NeighborPacket(Packet):
 #         self.dst_drone = dst_drone
 
 class ACKPacket(Packet):
-    def __init__(self, target_id, sender_id, node_info, acked_packet, time_step_creation, simulator):
-        super().__init__(time_step_creation, simulator, None)
+    def __init__(self, target_id, sender_id, node_info, acked_packet, time_step_creation, simulator, event_ref = None):
+        super().__init__(time_step_creation, simulator, event_ref)
         self.acked_packet = acked_packet
         self.target_id = target_id
         self.sender_id = sender_id
@@ -215,8 +215,18 @@ class Depot(Entity):
         super().__init__(id(self), coords, simulator)
         self.communication_range = communication_range
         self.__buffer = list()  # also with duplicated packets
-        self.whole_neighbor_table = {drone_identifier: set() for drone_identifier in range(self.simulator.n_drones)}
         self.routing_algorithm = self.simulator.routing_algorithm.value(self, self.simulator)
+        self.neighbor_table = {}
+    
+    def add_neighbor(self, drone, neighbor):
+        if drone.identifier not in self.neighbor_table:
+            self.neighbor_table[drone.identifier] = set()
+        self.neighbor_table[drone.identifier].add(neighbor)
+    
+    def get_neighbors(self, drone):
+        if drone.identifier not in self.neighbor_table:
+            return set()
+        return self.neighbor_table[drone.identifier]
 
     def remove_packets(self, packets):
         """ Removes the packets from the buffer. """
@@ -295,21 +305,8 @@ class Drone(Entity):
 
         self.neighbor_list = set()
 
-        self.ACK_WAITING_TIME = 20
+        self.parent_nodes = set()
 
-        self.waiting_for_acks = False
-
-        self.waiting_start_time = None
-
-
-    def update_ack_wait(self, cur_step):
-        if self.waiting_for_acks and cur_step - self.waiting_start_time > self.ACK_WAITING_TIME:
-            self.waiting_for_acks = False
-            self.waiting_start_time = None
-    
-    def start_ack_wait(self, cur_step):
-        self.waiting_for_acks = True
-        self.waiting_start_time = cur_step
 
        
 
