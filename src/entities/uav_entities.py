@@ -215,19 +215,15 @@ class NodesTable():
         self.nodes_list = {}
 
     def add_node(self, node: NodeInfo):
-        try:
-            self.nodes_list[node.self_id]
-        except:
-            self.nodes_list[node.self_id] = node
+        if node.self_id not in self.nodes_list:
+                self.nodes_list[node.self_id] = node
 
 class NeighborTable():
     def __init__(self):
         self.neighbors_list = {}
 
     def add_node(self, node: NodeInfo):
-        try:
-            self.neighbors_list[node.self_id]
-        except:
+        if node.self_id not in self.neighbors_list:
             self.neighbors_list[node.self_id] = node
 
 # ------------------ Depot ----------------------
@@ -273,19 +269,18 @@ class Depot(Entity):
         self.reset_discovery_info()
         for drone in self.simulator.drones:
             drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
-            if drone_distance_to_depot <= self.simulator.drone_com_range:
-                neighbors_table = {}
-                drone.nodes_discovery(DiscoveryPacket(self, self.simulator), neighbors_table)
+            if drone_distance_to_depot <= self.simulator.drone_com_range*2:
+                print(drone)
+                drone.nodes_discovery(DiscoveryPacket(self, self.simulator))
 
     def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
         node_info = NodeInfo(ack_packet.self_id, ack_packet.self_moving_speed, ack_packet.self_location, ack_packet.hop_count)
         self.nodes_table.add_node(node_info)
 
     def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable):
-        for neighbor_info in neighbor_table:
+        for _, neighbor_info in neighbor_table.neighbors_list.items():
             node_info = NodeInfo(neighbor_info.self_id, neighbor_info.self_moving_speed, neighbor_info.self_location, neighbor_info.hop_count)
-            if node_info.self_id not in self.nodes_table.nodes_list:
-                self.nodes_table.add_node(node_info)
+            self.nodes_table.add_node(node_info)
     
     def reset_discovery_info(self):
         self.nodes_table = NodesTable()
@@ -330,45 +325,55 @@ class Drone(Entity):
         #Neighbor_table
         self.neighbor_table = NeighborTable() #For discovery of the Multi-UAV nodes information in the neighbor network
 
-    #TO IMPLEMENT
-    def nodes_discovery(self, discovery_packet, neighbors_info):
+    def nodes_discovery(self, discovery_packet):
         if self.discovery_packet_first_received:
-            self.discovery_packet_first_received = False
+            #self.discovery_packet_first_received = False
             #Parent_node = Discovery_packet. Sender_ID
-            parent_node = discovery_packet.entity.identifier
+            parent_node = discovery_packet.entity
             ## GenerateAck + Unicast(Ack, Parent_node)
-            self.send_ack_unicast(AckDiscoveryPacket(parent_node, self.identifier, self.speed, self.coords, discovery_packet.hop_count+1, self.simulator), discovery_packet.entity)
+            self.send_ack_unicast(AckDiscoveryPacket(parent_node.identifier, self.identifier, self.speed, self.coords, discovery_packet.hop_count+1, self.simulator), parent_node)
+            parent_node.update_nodes_table_by_neighbor_table(self.neighbor_table)
+            self.discovery_packet_first_received = False
             ## Modify Discovery_packet:
             discovery_packet.entity = self
             discovery_packet.update_hop_count()
             #Broadcast(Discovery_packet)
             for drone in self.simulator.drones:
-                if drone.identifier not in [self.identifier, parent_node]:
-                    drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
-                    if drone_distance_to_depot <= self.simulator.drone_com_range:
-                        drone.nodes_discovery(discovery_packet, neighbors_info)
-            self.update_nodes_table_by_neighbor_table(self.neighbor_table, discovery_packet.entity)
-            
+                if drone.identifier not in [self.identifier, parent_node.identifier]:
+                    self_distance_to_drone = utilities.euclidean_distance(self.coords, drone.coords)
+                    if self_distance_to_drone <= self.simulator.drone_com_range*2: #ADD *2 WHEN SOLVED THE DISTRIBUTION PROBLEM
+                        #print(drone)
+                        drone.nodes_discovery(discovery_packet)
+                parent_node.update_nodes_table_by_neighbor_table(self.neighbor_table)
 
     def send_ack_unicast(self, ack_packet: AckDiscoveryPacket, parent_node):
         parent_node.update_nodes_table_by_ack(ack_packet)
+        if self.identifier == 29:
+            print(parent_node.identifier)
+            print(parent_node.neighbor_table.neighbors_list)
+        if self.identifier == 28:
+            print(parent_node.identifier)
+            print(parent_node.neighbor_table.neighbors_list)
+        if self.identifier == 24:
+            print(parent_node.identifier)
+            print(parent_node.neighbor_table.neighbors_list)
+        if self.identifier == 19:
+            print(parent_node.identifier)
+            print(parent_node.neighbor_table.neighbors_list)
     
-    def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable, parent_node):
+    def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable):
         for _, neighbor_info in neighbor_table.neighbors_list.items():
             node_info = NodeInfo(neighbor_info.self_id, neighbor_info.self_moving_speed, neighbor_info.self_location, neighbor_info.hop_count)
-            if isinstance(parent_node, Drone) == Drone:
-                if node_info.self_id not in parent_node.neighbor_table.nodes_list:
-                    parent_node.neighbor_table.add_node(node_info)
-            elif isinstance(parent_node, Depot):
-                if node_info.self_id not in parent_node.nodes_table.nodes_list:
-                    parent_node.nodes_table.add_node(node_info)
+            self.neighbor_table.add_node(node_info)
 
     def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
         node_info = NodeInfo(ack_packet.self_id, ack_packet.self_moving_speed, ack_packet.self_location, ack_packet.hop_count)
-        self.neighbor_table.add_node(node_info)
+        self.neighbor_table.add_node(node_info)    
 
     def reset_discovery_info(self):
         self.discovery_packet_first_received = True
+
+    def reset_neighbors_table(self):
         self.neighbor_table = NeighborTable()
 
     def update_packets(self, cur_step):
