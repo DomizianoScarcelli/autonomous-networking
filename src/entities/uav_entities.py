@@ -305,7 +305,9 @@ class Drone(Entity):
 
         self.neighbor_list = set()
 
-        self.parent_nodes = set()
+        self.parent_node: Entity = None
+
+        self.acks = set()
 
 
        
@@ -401,6 +403,15 @@ class Drone(Entity):
 
             if not self.is_known_packet(packet) and packet not in self.__buffer:
                 self.__buffer.append(packet)
+
+    def accept_packet(self, packet):
+        """ Self drone adds a packet of another drone, when it feels it passing by. """
+        # add if not notified yet, else don't, proprietary drone will delete all packets, but it is ok
+        # because they have already been notified by someone already
+        if not self.is_known_packet(packet) and packet not in self.__buffer:
+            self.__buffer.append(packet)
+            return False
+        return True
     
 
     def routing(self, drones, depot, cur_step):

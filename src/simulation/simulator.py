@@ -203,13 +203,13 @@ class Simulator:
 
         for cur_step in range(self.len_simulation):
 
-            print(f"Number of packets: {self.number_of_packets} at time_step: {cur_step}") #TODO: way too many packets
+            # print(f"Number of packets: {self.number_of_packets} at time_step: {cur_step}") #TODO: way too many packets
+            self.number_of_packets = 0
                         
             self.cur_step = cur_step
 
             # Depot initialize the discovery
-            if cur_step == 0 or cur_step % 100 == 0:
-                self.depot.routing_algorithm.initialize_discovery(self.cur_step)
+            self.depot.routing_algorithm.initialize_discovery(self.cur_step)
 
             # check for new events and remove the expired ones from the environment
             # self.environment.update_events(cur_step)
@@ -228,6 +228,7 @@ class Simulator:
                 drone.update_packets(cur_step)
                 drone.routing(self.drones, self.depot, cur_step)
                 drone.move(self.time_step_duration)
+        
 
             # in case we need probability map
             if config.ENABLE_PROBABILITIES:
