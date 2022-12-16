@@ -224,7 +224,7 @@ class Simulator:
                 drone.move(self.time_step_duration)
 
             '''To delete: print nodes table'''
-            print(str(cur_step) + ": " + str(self.depot.nodes_table.nodes_list))
+            #print(str(cur_step) + ": " + str(self.depot.nodes_table.nodes_list))
 
             for drone in self.drones:
                 drone.reset_neighbors_table()

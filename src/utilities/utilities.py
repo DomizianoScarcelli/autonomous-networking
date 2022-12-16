@@ -15,7 +15,6 @@ from src.utilities import random_waypoint_generation
 
 def compute_circle_path(radius: int, center: tuple) -> list:
     """ compute a set of finite coordinates to simulate a circle trajectory of input radius around a given center
-
         radius : int -> the radius of the trajectory
         centers : tuple (x, y) the center of the trajectory
         return a list of tuple (coordinates)
@@ -86,7 +85,6 @@ class EventGenerator:
     def handle_events_generation(self, cur_step: int, drones: list):
         """
         at fixed time randomly select a drone from the list and sample on it a packet/event.
-
         :param cur_step: the current step of the simulation to decide whenever sample an event or not
         :param drones: the drones where to sample the event
         :return: nothing
@@ -120,7 +118,6 @@ class PathManager:
         """ takes the drone id and
             returns a path (list of tuple)
             for it.
-
             Notice that: the path can last
             less or more than the simulation.
             In the first case the path should be repeated.
@@ -164,12 +161,10 @@ class PathManager:
 def json_to_paths(json_file_path):
     """ load the tour for drones
         and return a dictionary {drone_id : list of waypoint}
-
         e.g.,
         accept json that contains:
         {"drones": [{"index": "0", "tour": ["(1500, 0)", "(1637, 172)", ...
                     (1500, 0)"]}, {"index": "1", "tour": ["(1500, 0)",
-
         TOURS = {
             0 : [(0,0), (2000,2000), (1500, 1500), (200, 2000)],
             1 : [(0,0), (2000, 200), (200, 2000), (1500, 1500)]
@@ -184,6 +179,26 @@ def json_to_paths(json_file_path):
             for waypoint in drone_data["tour"]:
                 drone_path.append(make_tuple(waypoint))
             out_data[drone_index] = drone_path
+    return out_data
+
+def clean_paths(json_file_path):
+
+    out_data = {"drones":[]}
+    with open(json_file_path, 'r') as in_file:
+        data = json.load(in_file)
+        for drone_data in data["drones"]:
+            drone_index = int(drone_data["index"])
+            partial_dict = {"index": drone_index}
+            drone_path = []
+            for k, waypoint in enumerate(drone_data["tour"]):
+                if k == 10:
+                    drone_path.append("(750, 0)")
+                    partial_dict["tour"] = drone_path
+                    break
+                drone_path.append(waypoint)
+            out_data[drone_index] = drone_path
+            out_data["drones"].append(partial_dict)
+
     return out_data
 
 
@@ -362,3 +377,11 @@ class TraversedCells:
 
         x_cells = np.ceil(width_area / size_cell)  # numero di celle su X
         return x_cell_coords + (x_cells * y_cell_coords)
+
+
+if __name__ == "__main__":
+
+    out_data = clean_paths("data/tours/RANDOM_missions0.json")
+
+    with open("data/tours/RANDOM_missions0.json", 'w') as outfile:
+        json.dump(out_data, outfile)

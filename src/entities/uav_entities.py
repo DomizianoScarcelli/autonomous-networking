@@ -259,7 +259,8 @@ class Depot(Entity):
                                                      pck.event_ref.identifier,
                                                      delivery_delay,
                                                      feedback)
-
+            #print(f"DEPOT -> Drone {current_drone.identifier} packet: {pck.event_ref} total packets in sim: {len(self.simulator.metrics.drones_packets_to_depot)}")
+            
             # add metrics: all the packets notified to the depot
             self.simulator.metrics.drones_packets_to_depot.add((pck, cur_step))
             self.simulator.metrics.drones_packets_to_depot_list.append((pck, cur_step))
@@ -270,7 +271,7 @@ class Depot(Entity):
         for drone in self.simulator.drones:
             drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
             if drone_distance_to_depot <= self.simulator.drone_com_range*2:
-                print(drone)
+                #print(drone)
                 drone.nodes_discovery(DiscoveryPacket(self, self.simulator))
 
     def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
@@ -348,18 +349,6 @@ class Drone(Entity):
 
     def send_ack_unicast(self, ack_packet: AckDiscoveryPacket, parent_node):
         parent_node.update_nodes_table_by_ack(ack_packet)
-        if self.identifier == 29:
-            print(parent_node.identifier)
-            print(parent_node.neighbor_table.neighbors_list)
-        if self.identifier == 28:
-            print(parent_node.identifier)
-            print(parent_node.neighbor_table.neighbors_list)
-        if self.identifier == 24:
-            print(parent_node.identifier)
-            print(parent_node.neighbor_table.neighbors_list)
-        if self.identifier == 19:
-            print(parent_node.identifier)
-            print(parent_node.neighbor_table.neighbors_list)
     
     def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable):
         for _, neighbor_info in neighbor_table.neighbors_list.items():
