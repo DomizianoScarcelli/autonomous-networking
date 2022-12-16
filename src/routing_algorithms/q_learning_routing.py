@@ -1,12 +1,22 @@
 from src.routing_algorithms.BASE_routing import BASE_routing
 from src.utilities import utilities as util
-
+from src.utilities import config
+import numpy as np
+import math
 
 class QLearningRouting(BASE_routing):
 
     def __init__(self, drone, simulator):
-        BASE_routing.__init__(self, drone=drone, simulator=simulator)
+        BASE_routing.__init__(self, drone, simulator)
+        self.LEARNING_RATE = 0.8 #alpha (the learning rate)
+        self.DISCOUNT_FACTOR = 0.1 #gamma (it represents the importance of future rewards)
+        self.EPSILON = 0.4 #epsilon (it is used in episolon greedy)
+        self.BETA = 0.1 #Coefficient weight value (to change!)
+
+        self.random = np.random.RandomState(self.simulator.seed) #it generates a random value to be used in epsilon greedy
         self.taken_actions = {}  # id event : (old_state, old_action)
+        self.link_quality = {} #In order to calculate it, we considered the packet transmission time and packet delivery ratio. To calculate this, the Window Mean with Exponentially Weighted Moving Average (WMEWMA) method[9] was used. Note: for the moment I consider the distance between node.
+        self.q_table = {}
 
     def feedback(self, drone, id_event, delay, outcome):
         """
@@ -18,55 +28,103 @@ class QLearningRouting(BASE_routing):
         @param outcome: -1 or 1 (read below)
         @return:
         """
+        # Packets that we delivered and still need a feedback
+        #print(self.taken_actions)
 
         # outcome can be:
-        #   -1 if the packet/event expired;
-        #   1 if the packets has been delivered to the depot
+        #
+        # -1 if the packet/event expired;
+        # 1 if the packets has been delivered to the depot
+        #print(drone, id_event, delay, outcome)
 
+        # remove the entry, the action has received the feedback
         # Be aware, due to network errors we can give the same event to multiple drones and receive multiple
         # feedback for the same packet!!
-
         if id_event in self.taken_actions:
-            # BE AWARE, IMPLEMENT YOUR CODE WITHIN THIS IF CONDITION OTHERWISE IT WON'T WORK!
-            # TIPS: implement here the q-table updating process
-
-            # Drone id and Taken actions
-            print(f"\nIdentifier: {self.drone.identifier}, Taken Actions: {self.taken_actions}, Time Step: {self.simulator.cur_step}")
-
-            # feedback from the environment
-            print(drone, id_event, delay, outcome)
-
-            # TODO: write your code here
-
-            state, action = self.taken_actions[id_event]
-
-            # remove the entry, the action has received the feedback
+            state, action = self.taken_actions[id_event] #Old state and action
+            reward = compute_reward(self, drone, delay, outcome)
+            update_qtable(self, action, state, reward)
             del self.taken_actions[id_event]
 
-            # reward or update using the old state and the selected action at that time
-            # do something or train the model (?)
 
     def relay_selection(self, opt_neighbors: list, packet):
         """
         This function returns the best relay to send packets.
-
         @param packet:
         @param opt_neighbors: a list of tuple (hello_packet, source_drone)
         @return: The best drone to use as relay
         """
-        # TODO: Implement your code HERE
+        
+        state = compute_cell_index(self, self.drone, False)
+        check_state(self, state)
 
-        # Only if you need!
-        # cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell,
-        #                                                width_area=self.simulator.env_width,
-        #                                                x_pos=self.drone.coords[0],  # e.g. 1500
-        #                                                y_pos=self.drone.coords[1])[0]  # e.g. 500
-        # print(cell_index)
-        state, action = None, None
-
-        #print(self.drone.identifier)
-
-        # Store your current action --- you can add some stuff if needed to take a reward later
+        action = self.drone
+        
+        link_qualities = compute_link_qualities(self, self.drone, self.simulator.drones)
+        if len(self.link_quality.keys()) == 0:
+            starting_point = 0 if len(self.link_quality.keys()) == 0 else self.simulator.cur_step-config.SKIP_SIM_STEP
+            for step in range(starting_point, self.simulator.cur_step+config.SKIP_SIM_STEP):
+                self.link_quality[step] = link_qualities
+        drones_speed = compute_nodes_speed(self, self.drone, self.simulator.drones)
+        old_link_qualities = compute_old_link_qualities(self, self.drone, self.simulator.drones)
+        link_stability = np.array([(1-self.BETA)*math.exp(1/drones_speed[j])+self.BETA for j in range(len(self.simulator.drones))])
+       
         self.taken_actions[packet.event_ref.identifier] = (state, action)
+        next_state = compute_cell_index(self, self.drone, True)
+        check_state(self, next_state)
+        return action  # here you should return a drone object!
 
-        return None  # here you should return a drone object!
+#TO CHANGE!
+def compute_reward(self, drone, delay, outcome):
+    reward = 0
+    if outcome == -1:
+        if delay >= 2000 and delay < 3500:
+            reward =- 15
+        else:
+            reward =- 30
+    else:
+        pkts = drone.buffer_length()
+        if delay < 1000:
+            reward += (pkts * 2) + 30
+        else:
+            reward += (pkts * 2) + 15
+    return reward
+
+#Update the qtable
+def update_qtable(self, drone, state, reward):
+    next_state = compute_cell_index(self, drone, True) #Next state for the drone
+    check_state(self, next_state) #Add state to qtable if it doesn't exist
+    self.q_table[state][drone.identifier] += self.LEARNING_RATE * (reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state]) - self.q_table[state][drone.identifier]))
+
+#Compute the cell index of the drone (if next = True returns the cell of the next target)
+def compute_cell_index(self, drone, next):
+    if not next:
+        cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell, width_area=self.simulator.env_width, x_pos=drone.coords[0], y_pos=drone.coords[1])[0]
+    else:
+        cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell, width_area=self.simulator.env_width, x_pos=drone.next_target()[0], y_pos=drone.next_target()[1])[0] 
+    return cell_index
+
+#Check if the state exists in the QTable, otherwise it adds it
+def check_state(self, state):
+    if not state in self.q_table:
+        self.q_table[state] = [0 for _ in range(self.simulator.n_drones+1)]
+
+#Compute the link quality between self and the other drone (TO CHANGE!!)
+def compute_link_qualities(self, self_drone, drones):
+    curr_distances = np.array([util.euclidean_distance(self_drone.coords, drone.coords) for drone in drones])
+    return curr_distances
+
+def compute_old_link_qualities(self, self_drone, drones):
+    sum_lower_bound = len(drones) if self.simulator.cur_step < len(drones) else 0
+    old_link_qualities = np.zeros(len(drones))
+    for k in range(self.simulator.cur_step-sum_lower_bound, self.simulator.cur_step):
+        print(self.simulator.cur_step)
+        link_quality_k = np.array(self.link_quality[k])
+        old_link_qualities = np.sum([old_link_qualities, link_quality_k])
+    return old_link_qualities
+
+
+#TO CHANGE TOO! (how to compute? - 𝑣_i,j represents the speed at which nodes 𝑖 and 𝑗 are moving away)
+def compute_nodes_speed(self, self_drone, drones):
+    curr_speed = np.array([drone.speed for drone in drones])
+    return curr_speed
