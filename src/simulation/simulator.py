@@ -203,13 +203,12 @@ class Simulator:
 
         for cur_step in range(self.len_simulation):
 
-            # print(f"Number of packets: {self.number_of_packets} at time_step: {cur_step}") #TODO: way too many packets
+            print(f"Number of packets: {self.number_of_packets} at time_step: {cur_step}") #TODO: in some rounds no packets are sent
             self.number_of_packets = 0
                         
             self.cur_step = cur_step
 
-            # Depot initialize the discovery
-            self.depot.routing_algorithm.initialize_discovery(self.cur_step)
+            
 
             # check for new events and remove the expired ones from the environment
             # self.environment.update_events(cur_step)
@@ -219,6 +218,10 @@ class Simulator:
             # generates events
             # sense the events
             self.event_generator.handle_events_generation(cur_step, self.drones)
+
+            # Depot initialize the discovery
+            if cur_step == 0 or cur_step % (config.LIL_DELTA * 2) == 0:
+                self.depot.routing_algorithm.initialize_discovery(self.cur_step) #TODO: for the first 300 steps nothing happens
 
             for drone in self.drones:
                 # 1. update expired packets on drone buffers

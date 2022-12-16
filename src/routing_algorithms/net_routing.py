@@ -1,8 +1,7 @@
 
 import src.utilities.utilities as util
-from src.entities.uav_entities import DataPacket, ACKPacket
+from src.entities.uav_entities import DataPacket
 from src.simulation.metrics import Metrics
-from src.routing_algorithms.BASE_routing import BASE_routing
 from src.entities.uav_entities import Depot
 
 
@@ -32,7 +31,7 @@ class MediumDispatcher:
         original_self_packets = self.packets[:]
         self.packets = []
         for i in range(len(original_self_packets)):
-            packet, src_drone, dst_drone, to_send_ts = original_self_packets[i]
+            packet, src_drone, dst_drone, to_send_ts = original_self_packets[i] 
             if to_send_ts == current_ts:  # time to send this packet
                 to_drop_indices.append(i)
 
@@ -40,9 +39,10 @@ class MediumDispatcher:
                     drones_distance = util.euclidean_distance(src_drone.coords, dst_drone.coords)
                     if drones_distance <= min(src_drone.communication_range, dst_drone.communication_range):
                         if dst_drone.routing_algorithm.channel_success(drones_distance, no_error=True):
-                            if isinstance(packet, ACKPacket) and not isinstance(dst_drone, Depot):
-                                print(dst_drone, dst_drone.parent_node)
+                            if not isinstance(dst_drone, Depot) and dst_drone.parent_node is not None:
+                                print(f"{packet} sent by {src_drone.identifier} to {dst_drone.identifier}, parent node is {dst_drone.parent_node.identifier} at {current_ts}")
                             dst_drone.routing_algorithm.drone_reception(src_drone, packet, current_ts)  # reception of a packet
+
 
         original_self_packets = [original_self_packets[i] for i in range(len(original_self_packets)) if
                                  i not in to_drop_indices]

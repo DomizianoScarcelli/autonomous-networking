@@ -76,8 +76,7 @@ class Event(Entity):
 
     def __repr__(self):
         return "Ev id:" + str(self.identifier) + " c:" + str(self.coords)
-
-
+    
 # ------------------ Packet ----------------------
 class Packet(Entity):
     """ A packet is an object created out of an event monitored on the aoi. """

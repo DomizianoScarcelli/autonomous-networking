@@ -28,42 +28,39 @@ class BASE_routing(metaclass=abc.ABCMeta):
         self.no_transmission = False
 
     def initialize_discovery(self, current_ts):
-        # print(self.entity.neighbor_table, current_ts) #TODO: neighbor table is always empty
+        # print(self.entity.neighbor_table, current_ts)
         self.entity.neighbor_table = {}
         for drone in self.simulator.drones:
             drone.neighbor_list = set()
             drone.parent_node = None
             drone.acks = set()
         discovery_packet = DiscoveryPacket(self.simulator.depot, 0, current_ts, self.simulator, Event(self.entity.coords, current_ts, self.simulator))
-        self.broadcast_message(discovery_packet, self.simulator.depot, self.simulator.drones, current_ts)
+        neighbors = {drone for drone in self.simulator.drones if util.euclidean_distance(self.simulator.depot_coordinates, drone.coords) <= self.simulator.depot.communication_range}
+        self.broadcast_message(discovery_packet, self.simulator.depot, neighbors, current_ts)
 
     def drone_reception(self, src_drone, packet: Packet, current_ts):
         self.simulator.number_of_packets += 1
         
         if not self.__is_depot():
-            if self.entity.is_known_packet(packet): #TODO: never true
-                return
-            self.entity.accept_packets([packet])
+            # self.entity.accept_packets([packet]) #TODO: I don't know if this is needed
+            print(f"{packet} received by {self.entity.identifier} from {src_drone.identifier}, parent node is {self.entity.parent_node} at {current_ts}")
 
-        #TODO: too many packets are sent
         """ Handle receptions of all types of packets by the drone or the depot. """
         if isinstance(packet, DiscoveryPacket):
             if self.__is_depot():
                 return # The depot does not need to handle discovery packets
             if self.entity.parent_node is not None:
                 return # The drone has already received its discovery packet
-            # print(f"Drone {self.entity.identifier} has parent node {packet.sender_id.identifier} at current time {current_ts} ") 
             self.entity.parent_node = packet.sender_id
             self.ack_packet(packet, current_ts)
             self.broadcast_discovery(packet, current_ts)
 
         elif isinstance(packet, DataPacket):
             self.no_transmission = True
+            self.drone.accept_packets([packet])
             # build ack for the reception
-            ack_packet_info = {}
-            ack_packet = ACKPacket(self.entity, src_drone, ack_packet_info, packet, current_ts, self.simulator, packet.event_ref) #TODO: might be wrong
-            parent_node = ack_packet.acked_packet.sender_id
-            self.unicast_message(ack_packet, self.entity, parent_node, current_ts)
+            ack_packet = ACKPacket(self.drone, src_drone,{}, packet, current_ts, self.simulator)
+            self.unicast_message(ack_packet, self.drone, src_drone, current_ts)
 
         elif isinstance(packet, ACKPacket):
             if self.__is_depot():
