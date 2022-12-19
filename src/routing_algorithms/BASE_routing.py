@@ -28,22 +28,26 @@ class BASE_routing(metaclass=abc.ABCMeta):
         self.no_transmission = False
 
     def initialize_discovery(self, current_ts):
-        # print(self.entity.neighbor_table, current_ts)
+        print(self.entity.neighbor_table, current_ts)
         self.entity.neighbor_table = {}
         for drone in self.simulator.drones:
             drone.neighbor_list = set()
             drone.parent_node = None
             drone.acks = set()
         discovery_packet = DiscoveryPacket(self.simulator.depot, 0, current_ts, self.simulator, Event(self.entity.coords, current_ts, self.simulator))
+        self.simulator.depot.communication_range = 100000 #TODO: debug purposes
         neighbors = {drone for drone in self.simulator.drones if util.euclidean_distance(self.simulator.depot_coordinates, drone.coords) <= self.simulator.depot.communication_range}
-        self.broadcast_message(discovery_packet, self.simulator.depot, neighbors, current_ts)
+        if len(neighbors) == 0:
+            print("No neighbors found for the depot")
+        else:
+            print("Depot length of neighbors is", len(neighbors))
+        self.broadcast_message(discovery_packet, self.simulator.depot, self.simulator.drones, current_ts)
 
     def drone_reception(self, src_drone, packet: Packet, current_ts):
-        self.simulator.number_of_packets += 1
-        
         if not self.__is_depot():
             # self.entity.accept_packets([packet]) #TODO: I don't know if this is needed
-            print(f"{packet} received by {self.entity.identifier} from {src_drone.identifier}, parent node is {self.entity.parent_node} at {current_ts}")
+            # print(f"{packet} received by {self.entity.identifier} from {src_drone.identifier}, parent node is {self.entity.parent_node} at {current_ts}")
+            pass
 
         """ Handle receptions of all types of packets by the drone or the depot. """
         if isinstance(packet, DiscoveryPacket):

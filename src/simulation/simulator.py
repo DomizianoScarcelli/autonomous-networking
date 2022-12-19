@@ -82,7 +82,6 @@ class Simulator:
         # for stats
         self.metrics = Metrics(self)
         
-        self.number_of_packets = 0
 
         # setup network
         self.__setup_net_dispatcher()
@@ -203,8 +202,8 @@ class Simulator:
 
         for cur_step in range(self.len_simulation):
 
-            print(f"Number of packets: {self.number_of_packets} at time_step: {cur_step}") #TODO: in some rounds no packets are sent
-            self.number_of_packets = 0
+            print(f"Number of packets: {self.metrics.number_of_packets} at time_step: {cur_step}") #TODO: in some rounds no packets are sent
+            self.metrics.number_of_packets = 0
                         
             self.cur_step = cur_step
 
@@ -220,7 +219,8 @@ class Simulator:
             self.event_generator.handle_events_generation(cur_step, self.drones)
 
             # Depot initialize the discovery
-            if cur_step == 0 or cur_step % (config.LIL_DELTA * 2) == 0:
+            if cur_step == 0 or cur_step % (len(self.drones)*5) == 0:
+                print("initializing")
                 self.depot.routing_algorithm.initialize_discovery(self.cur_step) #TODO: for the first 300 steps nothing happens
 
             for drone in self.drones:

@@ -48,6 +48,8 @@ class Metrics:
 
         self.time_on_active_routing = 0
 
+        self.number_of_packets = 0 #TODO: debug purposes
+
 
     def other_metrics(self):
         """

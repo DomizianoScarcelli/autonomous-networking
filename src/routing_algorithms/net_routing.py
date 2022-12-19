@@ -39,8 +39,9 @@ class MediumDispatcher:
                     drones_distance = util.euclidean_distance(src_drone.coords, dst_drone.coords)
                     if drones_distance <= min(src_drone.communication_range, dst_drone.communication_range):
                         if dst_drone.routing_algorithm.channel_success(drones_distance, no_error=True):
-                            if not isinstance(dst_drone, Depot) and dst_drone.parent_node is not None:
-                                print(f"{packet} sent by {src_drone.identifier} to {dst_drone.identifier}, parent node is {dst_drone.parent_node.identifier} at {current_ts}")
+                            self.metric_class.number_of_packets += 1
+                            # if not isinstance(dst_drone, Depot) and dst_drone.parent_node is not None:
+                                # print(f"{packet} sent by {src_drone.identifier} to {dst_drone.identifier}, parent node is {dst_drone.parent_node.identifier} at {current_ts}")
                             dst_drone.routing_algorithm.drone_reception(src_drone, packet, current_ts)  # reception of a packet
 
 
