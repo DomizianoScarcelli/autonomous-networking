@@ -61,10 +61,6 @@ class QLearningRouting(BASE_routing):
         action = self.drone
         
         link_qualities = compute_link_qualities(self, self.drone, self.simulator.drones)
-        if len(self.link_quality.keys()) == 0:
-            starting_point = 0 if len(self.link_quality.keys()) == 0 else self.simulator.cur_step-config.SKIP_SIM_STEP
-            for step in range(starting_point, self.simulator.cur_step+config.SKIP_SIM_STEP):
-                self.link_quality[step] = link_qualities
         drones_speed = compute_nodes_speed(self, self.drone, self.simulator.drones)
         old_link_qualities = compute_old_link_qualities(self, self.drone, self.simulator.drones)
         link_stability = np.array([(1-self.BETA)*math.exp(1/drones_speed[j])+self.BETA for j in range(len(self.simulator.drones))])
@@ -94,14 +90,12 @@ def compute_reward(self, drone, delay, outcome):
 def update_qtable(self, drone, state, reward):
     next_state = compute_cell_index(self, drone, True) #Next state for the drone
     check_state(self, next_state) #Add state to qtable if it doesn't exist
-    self.q_table[state][drone.identifier] += self.LEARNING_RATE * (reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state]) - self.q_table[state][drone.identifier]))
+    self.q_table[state][drone.identifier] += self.LEARNING_RATE * (reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state])))
 
 #Compute the cell index of the drone (if next = True returns the cell of the next target)
 def compute_cell_index(self, drone, next):
-    if not next:
-        cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell, width_area=self.simulator.env_width, x_pos=drone.coords[0], y_pos=drone.coords[1])[0]
-    else:
-        cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell, width_area=self.simulator.env_width, x_pos=drone.next_target()[0], y_pos=drone.next_target()[1])[0] 
+    pos = drone.next_target()[1] if next else drone.coords[1]
+    cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell, width_area=self.simulator.env_width, x_pos=drone.coords[0], y_pos=pos)[0]
     return cell_index
 
 #Check if the state exists in the QTable, otherwise it adds it
@@ -112,13 +106,17 @@ def check_state(self, state):
 #Compute the link quality between self and the other drone (TO CHANGE!!)
 def compute_link_qualities(self, self_drone, drones):
     curr_distances = np.array([util.euclidean_distance(self_drone.coords, drone.coords) for drone in drones])
+    starting_point = 0 if len(self.link_quality.keys()) == 0 else self.simulator.cur_step-config.RETRANSMISSION_DELAY
+    for step in range(starting_point, self.simulator.cur_step):
+        self.link_quality[step] = curr_distances
     return curr_distances
 
 def compute_old_link_qualities(self, self_drone, drones):
-    sum_lower_bound = len(drones) if self.simulator.cur_step < len(drones) else 0
+    sum_lower_bound = len(drones) if self.simulator.cur_step > len(drones) else 0
+    #print(self.simulator.cur_step)
     old_link_qualities = np.zeros(len(drones))
-    for k in range(self.simulator.cur_step-sum_lower_bound, self.simulator.cur_step):
-        print(self.simulator.cur_step)
+    print(self.link_quality)
+    for k in range(self.simulator.cur_step-sum_lower_bound, self.simulator.cur_step-1):
         link_quality_k = np.array(self.link_quality[k])
         old_link_qualities = np.sum([old_link_qualities, link_quality_k])
     return old_link_qualities

@@ -270,7 +270,7 @@ class Depot(Entity):
         self.reset_discovery_info()
         for drone in self.simulator.drones:
             drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
-            if drone_distance_to_depot <= self.simulator.drone_com_range*2:
+            if drone_distance_to_depot <= self.communication_range:
                 #print(drone)
                 drone.nodes_discovery(DiscoveryPacket(self, self.simulator))
 
@@ -327,22 +327,23 @@ class Drone(Entity):
         self.neighbor_table = NeighborTable() #For discovery of the Multi-UAV nodes information in the neighbor network
 
     def nodes_discovery(self, discovery_packet):
-        if self.discovery_packet_first_received:
+        if self.discovery_packet_first_received: #or self.simulator.depot.nodes_table:
             #self.discovery_packet_first_received = False
             #Parent_node = Discovery_packet. Sender_ID
+            print(self.simulator.depot.nodes_table.nodes_list)
             parent_node = discovery_packet.entity
-            ## GenerateAck + Unicast(Ack, Parent_node)
+            # GenerateAck + Unicast(Ack, Parent_node)
             self.send_ack_unicast(AckDiscoveryPacket(parent_node.identifier, self.identifier, self.speed, self.coords, discovery_packet.hop_count+1, self.simulator), parent_node)
             parent_node.update_nodes_table_by_neighbor_table(self.neighbor_table)
             self.discovery_packet_first_received = False
-            ## Modify Discovery_packet:
+            # Modify Discovery_packet:
             discovery_packet.entity = self
             discovery_packet.update_hop_count()
             #Broadcast(Discovery_packet)
             for drone in self.simulator.drones:
                 if drone.identifier not in [self.identifier, parent_node.identifier]:
                     self_distance_to_drone = utilities.euclidean_distance(self.coords, drone.coords)
-                    if self_distance_to_drone <= self.simulator.drone_com_range*2: #ADD *2 WHEN SOLVED THE DISTRIBUTION PROBLEM
+                    if self_distance_to_drone <= self.communication_range:
                         #print(drone)
                         drone.nodes_discovery(discovery_packet)
                 parent_node.update_nodes_table_by_neighbor_table(self.neighbor_table)
