@@ -225,7 +225,6 @@ class Simulator:
 
             '''To delete: print nodes table'''
             #print(str(cur_step) + ": " + str(self.depot.nodes_table.nodes_list))
-
             for drone in self.drones:
                 drone.reset_neighbors_table()
 
@@ -243,9 +242,9 @@ class Simulator:
     def close(self):
         """ do some stuff at the end of simulation"""
         print("Closing simulation")
-
         self.print_metrics(plot_id="final")
         self.save_metrics(config.ROOT_EVALUATION_DATA + self.simulation_name)
+        print(f"Number of lost acks: {len(self.metrics.sent_acks) - len(self.metrics.received_acks)}")
 
     def print_metrics(self, plot_id="final"):
         """ add signature """

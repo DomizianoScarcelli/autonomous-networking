@@ -66,7 +66,7 @@ class BASE_routing(metaclass=abc.ABCMeta):
     def routing(self, depot, drones, cur_step):
         # set up this routing pass
         self.drone_identification(drones, cur_step)
-
+        
         self.send_packets(cur_step)
 
         # close this routing pass
@@ -101,9 +101,18 @@ class BASE_routing(metaclass=abc.ABCMeta):
                     continue
 
                 opt_neighbors.append((hpk, hpk.src_drone))
+            
+            #### TODO: Test if the neighbors are the same as the ones computed by the drone
+            comparable_opt_neighbors = [drone[1] for drone in opt_neighbors]
+            new_opt_neighbors = [drone for drone in self.drone.neighbor_table.get_drones()]
+            if comparable_opt_neighbors != new_opt_neighbors:
+                print(f"Correct neighbors of {self.drone}: {comparable_opt_neighbors}, computed neighbors: {new_opt_neighbors} at step {cur_step}")
+                print(f"Neighbor table: {self.simulator.depot.nodes_table}")
+            ###############################################################################
 
             if len(opt_neighbors) == 0:
                 return
+
 
             # send packets
             for pkd in self.drone.all_packets():
