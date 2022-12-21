@@ -184,7 +184,7 @@ class HelloPacket(Packet):
         self.src_drone = src_drone  # Don't use this
 
 class DiscoveryPacket(Packet):
-    def __init__(self, entity, simulator, time_step_creation):
+    def __init__(self, entity, simulator, time_step_creation=None):
         super().__init__(time_step_creation, simulator, None)
         self.simulator = simulator
         self.entity = entity
@@ -194,7 +194,7 @@ class DiscoveryPacket(Packet):
         self.hop_count += 1
 
 class AckDiscoveryPacket(Packet):
-    def __init__(self, sender_id, self_id, self_moving_speed, self_location, hop_count, simulator, time_step_creation):
+    def __init__(self, sender_id, self_id, self_moving_speed, self_location, hop_count, simulator, time_step_creation=None):
         super().__init__(time_step_creation, simulator, None)
         self.simulator = simulator
         self.sender_id = sender_id
@@ -331,7 +331,7 @@ class Drone(Entity):
         if self.discovery_packet_first_received: #or self.simulator.depot.nodes_table:
             #self.discovery_packet_first_received = False
             #Parent_node = Discovery_packet. Sender_ID
-            print(self.simulator.depot.nodes_table.nodes_list)
+            #print(self.simulator.depot.nodes_table.nodes_list)
             parent_node = discovery_packet.entity
             # GenerateAck + Unicast(Ack, Parent_node)
             self.send_ack_unicast(AckDiscoveryPacket(parent_node.identifier, self.identifier, self.speed, self.coords, discovery_packet.hop_count+1, self.simulator), parent_node)

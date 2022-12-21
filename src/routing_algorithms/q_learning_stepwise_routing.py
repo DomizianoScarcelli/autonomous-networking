@@ -115,10 +115,9 @@ def compute_old_link_qualities(self, self_drone, drones):
     sum_lower_bound = len(drones) if self.simulator.cur_step > len(drones) else 0
     #print(self.simulator.cur_step)
     old_link_qualities = np.zeros(len(drones))
-    print(self.link_quality)
-    for k in range(self.simulator.cur_step-sum_lower_bound, self.simulator.cur_step-1):
+    '''for k in range(self.simulator.cur_step-sum_lower_bound, self.simulator.cur_step-1):
         link_quality_k = np.array(self.link_quality[k])
-        old_link_qualities = np.sum([old_link_qualities, link_quality_k])
+        old_link_qualities = np.sum([old_link_qualities, link_quality_k])'''
     return old_link_qualities
 
 
