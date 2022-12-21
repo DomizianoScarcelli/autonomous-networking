@@ -1,6 +1,7 @@
 from src.routing_algorithms.BASE_routing import BASE_routing
 from src.utilities import utilities as util
 from src.utilities import config
+from src.simulation.metrics import Metrics
 import numpy as np
 import math
 
@@ -15,8 +16,10 @@ class QlearningStepwiseRouting(BASE_routing):
 
         self.random = np.random.RandomState(self.simulator.seed) #it generates a random value to be used in epsilon greedy
         self.taken_actions = {}  # id event : (old_state, old_action)
-        self.link_quality = {} #In order to calculate it, we considered the packet transmission time and packet delivery ratio. To calculate this, the Window Mean with Exponentially Weighted Moving Average (WMEWMA) method[9] was used. Note: for the moment I consider the distance between node.
+        self.link_qualities = {} #In order to calculate it, we considered the packet transmission time and packet delivery ratio. To calculate this, the Window Mean with Exponentially Weighted Moving Average (WMEWMA) method[9] was used. Note: for the moment I consider the distance between node.
         self.q_table = {}
+
+        #print(self.link_quality)
 
     def feedback(self, drone, id_event, delay, outcome):
         """
@@ -60,9 +63,10 @@ class QlearningStepwiseRouting(BASE_routing):
 
         action = self.drone
         
-        link_qualities = compute_link_qualities(self, self.drone, self.simulator.drones)
+        update_link_quality(self, self.drone)
+        print(self.link_qualities)
         drones_speed = compute_nodes_speed(self, self.drone, self.simulator.drones)
-        old_link_qualities = compute_old_link_qualities(self, self.drone, self.simulator.drones)
+        link_quality = compute_past_link_quality(self, self.drone)
         link_stability = np.array([(1-self.BETA)*math.exp(1/drones_speed[j])+self.BETA for j in range(len(self.simulator.drones))])
        
         self.taken_actions[packet.event_ref.identifier] = (state, action)
@@ -103,22 +107,34 @@ def check_state(self, state):
     if not state in self.q_table:
         self.q_table[state] = [0 for _ in range(self.simulator.n_drones+1)]
 
-#Compute the link quality between self and the other drone (TO CHANGE!!)
-def compute_link_qualities(self, self_drone, drones):
+#Save the link quality of the drone at current step
+def update_link_quality(self, self_drone):
+    '''
     curr_distances = np.array([util.euclidean_distance(self_drone.coords, drone.coords) for drone in drones])
     starting_point = 0 if len(self.link_quality.keys()) == 0 else self.simulator.cur_step-config.RETRANSMISSION_DELAY
     for step in range(starting_point, self.simulator.cur_step):
         self.link_quality[step] = curr_distances
     return curr_distances
+    '''
+    starting_point = 0 if (self.simulator.cur_step < config.RETRANSMISSION_DELAY) or (len(self.link_qualities.keys()) == 0) else max(self.link_qualities.keys()) #self.simulator.cur_step-config.RETRANSMISSION_DELAY
+    for step in range(starting_point, self.simulator.cur_step):
+        self.link_qualities[step] = self.simulator.metrics.get_link_quality(self_drone)
 
-def compute_old_link_qualities(self, self_drone, drones):
+def compute_past_link_quality(self):
+    '''
     sum_lower_bound = len(drones) if self.simulator.cur_step > len(drones) else 0
     #print(self.simulator.cur_step)
     old_link_qualities = np.zeros(len(drones))
-    '''for k in range(self.simulator.cur_step-sum_lower_bound, self.simulator.cur_step-1):
+    for k in range(self.simulator.cur_step-sum_lower_bound, self.simulator.cur_step-1):
         link_quality_k = np.array(self.link_quality[k])
-        old_link_qualities = np.sum([old_link_qualities, link_quality_k])'''
+        old_link_qualities = np.sum([old_link_qualities, link_quality_k])
     return old_link_qualities
+    '''
+    link_quality = 0
+    sum_lower_bound = self.simulator.cur_step-len(self.simulator.drones) if self.simulator.cur_step >= len(self.simulator.drones) else 0
+    for k in range(sum_lower_bound, self.simulator.cur_step-1):
+        link_quality += self.link_qualities[k]
+    return link_quality
 
 
 #TO CHANGE TOO! (how to compute? - 𝑣_i,j represents the speed at which nodes 𝑖 and 𝑗 are moving away)

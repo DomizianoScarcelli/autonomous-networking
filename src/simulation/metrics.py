@@ -43,6 +43,9 @@ class Metrics:
         # all packets notified to depot -- but with order
         self.drones_packets_to_depot_list = []
 
+        # all packets to depot divided by drones
+        self.packets_to_depot_by_drones = {}
+
         # number of time steps on mission, incremented each time drone is doing sensing mission
         self.time_on_mission = 0
 
@@ -229,6 +232,11 @@ class Metrics:
     def __repr__(self):
         return str(self.__dictionary_represenation())
 
+    # Get the current link quality of a node
+    def get_link_quality(self, drone):
+        if drone.identifier not in self.packets_to_depot_by_drones:
+            self.packets_to_depot_by_drones[drone.identifier] = []
+        return len(self.packets_to_depot_by_drones[drone.identifier])/self.all_data_packets_in_simulation
 
 if __name__ == "__main__":
     m = Metrics().from_file("data/experiments/test_stats.pickle")
