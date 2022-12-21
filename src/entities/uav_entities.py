@@ -176,7 +176,6 @@ class ACKPacket(Packet):
 
 class HelloPacket(Packet):
     """ The hello message is responsible to give info about neighborhood """
-
     def __init__(self, src_drone, time_step_creation, simulator, cur_pos, speed, next_target):
         super().__init__(time_step_creation, simulator, None)
         self.cur_pos = cur_pos
@@ -185,7 +184,8 @@ class HelloPacket(Packet):
         self.src_drone = src_drone  # Don't use this
 
 class DiscoveryPacket(Packet):
-    def __init__(self, entity, simulator): #Can't inherit simulator from superclass Packet (?)
+    def __init__(self, entity, simulator, time_step_creation):
+        super().__init__(time_step_creation, simulator, None)
         self.simulator = simulator
         self.entity = entity
         self.hop_count = 1
@@ -193,8 +193,9 @@ class DiscoveryPacket(Packet):
     def update_hop_count(self):
         self.hop_count += 1
 
-class AckDiscoveryPacket(): #Error here instanting it as a Packet (?)
-    def __init__(self, sender_id, self_id, self_moving_speed, self_location, hop_count, simulator):
+class AckDiscoveryPacket(Packet):
+    def __init__(self, sender_id, self_id, self_moving_speed, self_location, hop_count, simulator, time_step_creation):
+        super().__init__(time_step_creation, simulator, None)
         self.simulator = simulator
         self.sender_id = sender_id
         self.self_id = self_id
