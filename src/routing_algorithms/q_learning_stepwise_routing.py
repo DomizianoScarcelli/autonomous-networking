@@ -4,7 +4,7 @@ from src.utilities import config
 import numpy as np
 import math
 
-class QLearningRouting(BASE_routing):
+class QlearningStepwiseRouting(BASE_routing):
 
     def __init__(self, drone, simulator):
         BASE_routing.__init__(self, drone, simulator)

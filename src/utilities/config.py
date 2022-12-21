@@ -1,6 +1,6 @@
 
 from src.routing_algorithms.georouting import GeoRouting
-from src.routing_algorithms.q_learning_routing import QLearningRouting
+from src.routing_algorithms.q_learning_stepwise_routing import QlearningStepwiseRouting
 from src.routing_algorithms.random_routing import RandomRouting
 from enum import Enum
 
@@ -84,7 +84,7 @@ DEPOT_COO = (750, 0)             # (float, float): coordinates of the depot.
 class RoutingAlgorithm(Enum):
     GEO = GeoRouting
     RND = RandomRouting
-    QL = QLearningRouting
+    QLS = QlearningStepwiseRouting
 
     @staticmethod
     def keylist():
@@ -100,7 +100,7 @@ class ChannelError(Enum):
         return list(map(lambda c: c.name, ChannelError))
 
 
-ROUTING_ALGORITHM = RoutingAlgorithm.QL
+ROUTING_ALGORITHM = RoutingAlgorithm.QLS
 CHANNEL_ERROR_TYPE = ChannelError.GAUSSIAN
 
 COMMUNICATION_P_SUCCESS = 1   # float: probability to have success in a communication.
