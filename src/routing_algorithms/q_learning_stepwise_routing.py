@@ -1,10 +1,11 @@
 from src.routing_algorithms.BASE_routing import BASE_routing
 from src.utilities import utilities as util
 from src.utilities import config
+from src.simulation.metrics import Metrics
 import numpy as np
 import math
 
-class QLearningRouting(BASE_routing):
+class QlearningStepwiseRouting(BASE_routing):
 
     def __init__(self, drone, simulator):
         BASE_routing.__init__(self, drone, simulator)
@@ -15,8 +16,10 @@ class QLearningRouting(BASE_routing):
 
         self.random = np.random.RandomState(self.simulator.seed) #it generates a random value to be used in epsilon greedy
         self.taken_actions = {}  # id event : (old_state, old_action)
-        self.link_quality = {} #In order to calculate it, we considered the packet transmission time and packet delivery ratio. To calculate this, the Window Mean with Exponentially Weighted Moving Average (WMEWMA) method[9] was used. Note: for the moment I consider the distance between node.
+        self.link_qualities = {} #In order to calculate it, we considered the packet transmission time and packet delivery ratio. To calculate this, the Window Mean with Exponentially Weighted Moving Average (WMEWMA) method[9] was used. Note: for the moment I consider the distance between node.
         self.q_table = {}
+
+        #print(self.link_quality)
 
     def feedback(self, drone, id_event, delay, outcome):
         """
@@ -60,13 +63,13 @@ class QLearningRouting(BASE_routing):
 
         action = self.drone
         
-        link_qualities = compute_link_qualities(self, self.drone, self.simulator.drones)
-        if len(self.link_quality.keys()) == 0:
-            starting_point = 0 if len(self.link_quality.keys()) == 0 else self.simulator.cur_step-config.SKIP_SIM_STEP
-            for step in range(starting_point, self.simulator.cur_step+config.SKIP_SIM_STEP):
-                self.link_quality[step] = link_qualities
+        update_link_quality(self, self.drone)
+        #print(self.link_qualities)
         drones_speed = compute_nodes_speed(self, self.drone, self.simulator.drones)
-        old_link_qualities = compute_old_link_qualities(self, self.drone, self.simulator.drones)
+        link_quality_sum = {}
+        for j in opt_neighbors:
+            link_quality_sum[j[-1].identifier] = compute_past_link_quality(self, j[-1])
+        print(link_quality_sum)
         link_stability = np.array([(1-self.BETA)*math.exp(1/drones_speed[j])+self.BETA for j in range(len(self.simulator.drones))])
        
         self.taken_actions[packet.event_ref.identifier] = (state, action)
@@ -94,14 +97,12 @@ def compute_reward(self, drone, delay, outcome):
 def update_qtable(self, drone, state, reward):
     next_state = compute_cell_index(self, drone, True) #Next state for the drone
     check_state(self, next_state) #Add state to qtable if it doesn't exist
-    self.q_table[state][drone.identifier] += self.LEARNING_RATE * (reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state]) - self.q_table[state][drone.identifier]))
+    self.q_table[state][drone.identifier] += self.LEARNING_RATE * (reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state])))
 
 #Compute the cell index of the drone (if next = True returns the cell of the next target)
 def compute_cell_index(self, drone, next):
-    if not next:
-        cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell, width_area=self.simulator.env_width, x_pos=drone.coords[0], y_pos=drone.coords[1])[0]
-    else:
-        cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell, width_area=self.simulator.env_width, x_pos=drone.next_target()[0], y_pos=drone.next_target()[1])[0] 
+    pos = drone.next_target()[1] if next else drone.coords[1]
+    cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell, width_area=self.simulator.env_width, x_pos=drone.coords[0], y_pos=pos)[0]
     return cell_index
 
 #Check if the state exists in the QTable, otherwise it adds it
@@ -109,19 +110,47 @@ def check_state(self, state):
     if not state in self.q_table:
         self.q_table[state] = [0 for _ in range(self.simulator.n_drones+1)]
 
-#Compute the link quality between self and the other drone (TO CHANGE!!)
-def compute_link_qualities(self, self_drone, drones):
+#Save the link quality of the drone at current step
+def update_link_quality(self, self_drone):
+    '''
     curr_distances = np.array([util.euclidean_distance(self_drone.coords, drone.coords) for drone in drones])
+    starting_point = 0 if len(self.link_quality.keys()) == 0 else self.simulator.cur_step-config.RETRANSMISSION_DELAY
+    for step in range(starting_point, self.simulator.cur_step):
+        self.link_quality[step] = curr_distances
     return curr_distances
+    '''
+    starting_point = 0 if (self.simulator.cur_step < config.RETRANSMISSION_DELAY) or (len(self.link_qualities.keys()) == 0) else max(self.link_qualities.keys()) #self.simulator.cur_step-config.RETRANSMISSION_DELAY
+    for step in range(starting_point, self.simulator.cur_step):
+        i = self.drone
+        link_qualities = []
+        for j in self.simulator.drones:
+            link_quality_ij = np.exp(-7*(util.euclidean_distance(i.coords, j.coords)/config.COMMUNICATION_RANGE_DRONE)) if i != j else 0
+            link_qualities.append(link_quality_ij)
+        self.link_qualities[step] = link_qualities
 
-def compute_old_link_qualities(self, self_drone, drones):
-    sum_lower_bound = len(drones) if self.simulator.cur_step < len(drones) else 0
+def compute_past_link_quality(self, neighbor):
+    '''
+    sum_lower_bound = len(drones) if self.simulator.cur_step > len(drones) else 0
+    #print(self.simulator.cur_step)
     old_link_qualities = np.zeros(len(drones))
-    for k in range(self.simulator.cur_step-sum_lower_bound, self.simulator.cur_step):
-        print(self.simulator.cur_step)
+    for k in range(self.simulator.cur_step-sum_lower_bound, self.simulator.cur_step-1):
         link_quality_k = np.array(self.link_quality[k])
         old_link_qualities = np.sum([old_link_qualities, link_quality_k])
     return old_link_qualities
+    '''
+    '''
+    link_quality = 0
+    sum_lower_bound = self.simulator.cur_step-len(self.simulator.drones) if self.simulator.cur_step >= len(self.simulator.drones) else 0
+    for k in range(sum_lower_bound, self.simulator.cur_step-1):
+        link_quality += self.link_qualities[k]
+    return link_quality
+    '''
+    link_quality = 0
+    sum_lower_bound = self.simulator.cur_step-len(self.simulator.drones) if self.simulator.cur_step >= len(self.simulator.drones) else 0
+    for k in range(sum_lower_bound, self.simulator.cur_step-1):
+        link_quality += self.link_qualities[k][neighbor.identifier]
+    return link_quality
+
 
 
 #TO CHANGE TOO! (how to compute? - 𝑣_i,j represents the speed at which nodes 𝑖 and 𝑗 are moving away)

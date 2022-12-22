@@ -176,7 +176,6 @@ class ACKPacket(Packet):
 
 class HelloPacket(Packet):
     """ The hello message is responsible to give info about neighborhood """
-
     def __init__(self, src_drone, time_step_creation, simulator, cur_pos, speed, next_target):
         super().__init__(time_step_creation, simulator, None)
         self.cur_pos = cur_pos
@@ -274,6 +273,15 @@ class Depot(Entity):
             # add metrics: all the packets notified to the depot
             self.simulator.metrics.drones_packets_to_depot.add((pck, cur_step))
             self.simulator.metrics.drones_packets_to_depot_list.append((pck, cur_step))
+
+            # add metrics: all the packets notified to the depot by the current drone (used to compute link quality)
+            if current_drone.identifier not in self.simulator.metrics.packets_to_depot_by_drones:
+                self.simulator.metrics.packets_to_depot_by_drones[current_drone.identifier] = [(pck, cur_step)]
+            else:
+                pkts = self.simulator.metrics.packets_to_depot_by_drones[current_drone.identifier]
+                pkts.append((pck, cur_step))
+                self.simulator.metrics.packets_to_depot_by_drones[current_drone.identifier] = pkts
+
             pck.time_delivery = cur_step
     
     def start_discovery(self):
@@ -360,14 +368,15 @@ class Drone(Entity):
             self.send_ack_unicast(AckDiscoveryPacket(parent_node.identifier, self.identifier, self.speed, self.coords, discovery_packet.hop_count+1, self.simulator), parent_node)
             parent_node.update_nodes_table_by_neighbor_table(self.neighbor_table)
             self.discovery_packet_first_received = False
-            ## Modify Discovery_packet:
+            # Modify Discovery_packet:
             discovery_packet.entity = self
             discovery_packet.update_hop_count()
             #Broadcast(Discovery_packet)
             for drone in self.simulator.drones:
                 if drone.identifier not in [self.identifier, parent_node.identifier]:
                     self_distance_to_drone = utilities.euclidean_distance(self.coords, drone.coords)
-                    if self_distance_to_drone <= self.simulator.drone_com_range:
+                    if self_distance_to_drone <= self.communication_range:
+                        #print(drone)
                         drone.nodes_discovery(discovery_packet)
                 parent_node.update_nodes_table_by_neighbor_table(self.neighbor_table)
 
