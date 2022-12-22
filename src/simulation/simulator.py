@@ -243,10 +243,21 @@ class Simulator:
                     return lost_drones
                 return set()
             
+            def check_if_lost_ack_depot():
+                if self.depot.identifier in self.metrics.sent_acks:
+                    acks_received = self.metrics.sent_acks[self.depot.identifier]
+                    neighbor_table = set(self.depot.nodes_table.nodes_list.keys())
+                    lost_drones = {drone.identifier for drone in acks_received}.difference(neighbor_table)
+                    return lost_drones
+                return set()
+            
             for drone in self.drones:
                 lost_drones = check_if_lost_ack(drone)
                 if lost_drones != set():
                     print(f"Lost drones: {lost_drones}")
+            depot_lost_drones = check_if_lost_ack_depot()
+            if depot_lost_drones != set():
+                print(f"Depot lost drones: {depot_lost_drones}")
 
             # TEST_DRONE_ID = 5
             # sent_acks = []

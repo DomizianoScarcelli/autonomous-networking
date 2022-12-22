@@ -294,11 +294,6 @@ class Depot(Entity):
                 drone.initialize_discovery() #Initialize the discovery without setting the depot as the parent
 
     def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
-        # # TODO: debug #############
-        # if ack_packet.sender_id not in self.simulator.metrics.sent_acks:
-        #     self.simulator.metrics.sent_acks[ack_packet.sender_id] = []
-        # self.simulator.metrics.sent_acks[ack_packet.sender_id] += [self]
-        # #############
         node_info = NodeInfo(ack_packet.self_id, ack_packet.self_moving_speed, ack_packet.self_location, ack_packet.hop_count)
         self.nodes_table.add_node(node_info)
 
