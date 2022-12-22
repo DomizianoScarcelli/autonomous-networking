@@ -273,14 +273,6 @@ class Depot(Entity):
             self.simulator.metrics.drones_packets_to_depot.add((pck, cur_step))
             self.simulator.metrics.drones_packets_to_depot_list.append((pck, cur_step))
 
-            # add metrics: all the packets notified to the depot by the current drone (used to compute link quality)
-            if current_drone.identifier not in self.simulator.metrics.packets_to_depot_by_drones:
-                self.simulator.metrics.packets_to_depot_by_drones[current_drone.identifier] = [(pck, cur_step)]
-            else:
-                pkts = self.simulator.metrics.packets_to_depot_by_drones[current_drone.identifier]
-                pkts.append((pck, cur_step))
-                self.simulator.metrics.packets_to_depot_by_drones[current_drone.identifier] = pkts
-
             pck.time_delivery = cur_step
     
     def start_discovery(self):
