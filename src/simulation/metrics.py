@@ -49,8 +49,8 @@ class Metrics:
         self.time_on_active_routing = 0
 
         self.sent_acks = [] #TODO: Debug
-        self.received_acks = [] #TODO: Debug
-
+        
+        
     def score(self, undelivered_penalty=1.5):
         """ returns a score for the exectued simulation: 
 

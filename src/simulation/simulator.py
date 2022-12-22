@@ -34,6 +34,7 @@ class Simulator:
                  drone_retransmission_delta=config.RETRANSMISSION_DELAY,
                  drone_communication_success=config.COMMUNICATION_P_SUCCESS,
                  depot_com_range=config.DEPOT_COMMUNICATION_RANGE,
+                 depot_control_com_range = config.DEPOT_CONTROL_PACKET_RANGE,
                  depot_coordinates=config.DEPOT_COO,
                  event_duration=config.EVENTS_DURATION,
                  event_generation_prob=config.P_FEEL_EVENT,
@@ -56,6 +57,7 @@ class Simulator:
         self.env_width = env_width
         self.env_height = env_height
         self.depot_com_range = depot_com_range
+        self.depot_control_com_range = depot_control_com_range
         self.depot_coordinates = depot_coordinates
         self.len_simulation = len_simulation
         self.time_step_duration = time_step_duration
@@ -234,6 +236,11 @@ class Simulator:
 
             if self.show_plot or config.SAVE_PLOT:
                 self.__plot(cur_step)
+                
+            # #TODO: debug
+            # lost_acks = {ack_sender for ack_sender in self.metrics.sent_acks if ack_sender not in self.depot.nodes_table.nodes_list.keys()}
+            # print(f"Lost acks: {lost_acks}")
+            # lost_acks.clear()
 
         if config.DEBUG:
             print("End of simulation, sim time: " + str(
@@ -244,7 +251,6 @@ class Simulator:
         print("Closing simulation")
         self.print_metrics(plot_id="final")
         self.save_metrics(config.ROOT_EVALUATION_DATA + self.simulation_name)
-        print(f"Number of lost acks: {len(self.metrics.sent_acks) - len(self.metrics.received_acks)}")
 
     def print_metrics(self, plot_id="final"):
         """ add signature """
