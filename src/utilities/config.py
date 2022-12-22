@@ -1,6 +1,6 @@
 
 from src.routing_algorithms.georouting import GeoRouting
-from src.routing_algorithms.q_learning_routing import QLearningRouting
+from src.routing_algorithms.q_learning_stepwise_routing import QlearningStepwiseRouting
 from src.routing_algorithms.random_routing import RandomRouting
 from enum import Enum
 
@@ -39,8 +39,8 @@ RANDOM_START_POINT = True  # bool whether the drones start the mission at random
 DEBUG = False                         # bool: whether to print debug strings or not.
 EXPERIMENTS_DIR = "data/evaluation_tests/"  # output data : the results of the simulation
 
-# drawaing
-PLOT_SIM = False      # bool: whether to plot or not the simulation.
+# drawing
+PLOT_SIM = True      # bool: whether to plot or not the simulation.
 WAIT_SIM_STEP = 0 #.1     # float: seconds, pauses the rendering for 'DELAY_PLOT' seconds.
 SKIP_SIM_STEP = 10      # int: steps, plot the simulation every 'RENDERING_STEP' steps. At least 1.
 DRAW_SIZE = 700       # int: size of the drawing window.
@@ -55,15 +55,15 @@ SAVE_PLOT_DIR = "data/plots/"
 # ----------------------------- SIMULATION PARAMS. ---------------------------- #
 SIM_DURATION = 18000   # int: steps of simulation. # ***
 TS_DURATION = 0.150   # float: seconds duration of a step in seconds.
-SEED = 10  # int: seed of this simulation.
+SEED = 10         # int: seed of this simulation.
 
-N_DRONES = 5    # int: number of drones. # ***
+N_DRONES = 30      # int: number of drones. # ***
 ENV_WIDTH = 1500      # float: meters, width of environment.
 ENV_HEIGHT = 1500     # float: meters, height of environment.
 
 # events
 EVENTS_DURATION = 1500  # SIM_DURATION  # int: steps, number of time steps that an event lasts  -> to seconds = step * step_duration.
-D_FEEL_EVENT = 65      # int: steps, a new packet is felt (generated on the drone) every 'D_FEEL_EVENT' steps. # ***
+D_FEEL_EVENT = 1      # int: steps, a new packet is felt (generated on the drone) every 'D_FEEL_EVENT' steps. # ***
 P_FEEL_EVENT = .8       # float: probability that the drones feels the event generated on the drone. # ***
 
 """ e.g. given D_FEEL_EVENT = 500, P_FEEL_EVENT = .5, every 500 steps with probability .5 the drone will feel an event."""
@@ -79,12 +79,14 @@ DRONE_MAX_ENERGY = 1000000           # int: max energy of a drone.
 DEPOT_COMMUNICATION_RANGE = 150  # float: meters, communication range of the depot.
 DEPOT_COO = (750, 0)             # (float, float): coordinates of the depot.
 
+DEPOT_CONTROL_PACKET_RANGE = 1000000 # float: meters, the range of the control packets of the depot.
+
 
 # ------------------------------- ROUTING PARAMS. ------------------------------- #
 class RoutingAlgorithm(Enum):
     GEO = GeoRouting
     RND = RandomRouting
-    QL = QLearningRouting
+    QLS = QlearningStepwiseRouting
 
     @staticmethod
     def keylist():
@@ -100,7 +102,7 @@ class ChannelError(Enum):
         return list(map(lambda c: c.name, ChannelError))
 
 
-ROUTING_ALGORITHM = RoutingAlgorithm.GEO
+ROUTING_ALGORITHM = RoutingAlgorithm.QLS
 CHANNEL_ERROR_TYPE = ChannelError.GAUSSIAN
 
 COMMUNICATION_P_SUCCESS = 1   # float: probability to have success in a communication.
@@ -109,7 +111,7 @@ PACKETS_MAX_TTL = 200         # float: threshold in the maximum number of hops. 
 RETRANSMISSION_DELAY = 10     # int: how many time steps to wait before transmit again (for k retransmissions). # ---  #delta_k
 
 # ------------------------------------------- ROUTING MISC --------------------------------- #
-HELLO_DELAY = 5            # int : how many time steps wait before transmit again an hello message
+DISCOVERY_DELAY = 5            # int : how many time steps wait before transmit again an hello message
 RECEPTION_GRANTED = 0.95   # float : the min amount of success to evalute a neigh as relay
 LIL_DELTA = 1              # INT:  > 0
 OLD_HELLO_PACKET = 50

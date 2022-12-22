@@ -15,7 +15,6 @@ from src.utilities import random_waypoint_generation
 
 def compute_circle_path(radius: int, center: tuple) -> list:
     """ compute a set of finite coordinates to simulate a circle trajectory of input radius around a given center
-
         radius : int -> the radius of the trajectory
         centers : tuple (x, y) the center of the trajectory
         return a list of tuple (coordinates)
@@ -86,7 +85,6 @@ class EventGenerator:
     def handle_events_generation(self, cur_step: int, drones: list):
         """
         at fixed time randomly select a drone from the list and sample on it a packet/event.
-
         :param cur_step: the current step of the simulation to decide whenever sample an event or not
         :param drones: the drones where to sample the event
         :return: nothing
@@ -120,7 +118,6 @@ class PathManager:
         """ takes the drone id and
             returns a path (list of tuple)
             for it.
-
             Notice that: the path can last
             less or more than the simulation.
             In the first case the path should be repeated.
@@ -164,12 +161,10 @@ class PathManager:
 def json_to_paths(json_file_path):
     """ load the tour for drones
         and return a dictionary {drone_id : list of waypoint}
-
         e.g.,
         accept json that contains:
         {"drones": [{"index": "0", "tour": ["(1500, 0)", "(1637, 172)", ...
                     (1500, 0)"]}, {"index": "1", "tour": ["(1500, 0)",
-
         TOURS = {
             0 : [(0,0), (2000,2000), (1500, 1500), (200, 2000)],
             1 : [(0,0), (2000, 200), (200, 2000), (1500, 1500)]

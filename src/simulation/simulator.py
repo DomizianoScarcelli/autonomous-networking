@@ -34,6 +34,7 @@ class Simulator:
                  drone_retransmission_delta=config.RETRANSMISSION_DELAY,
                  drone_communication_success=config.COMMUNICATION_P_SUCCESS,
                  depot_com_range=config.DEPOT_COMMUNICATION_RANGE,
+                 depot_control_com_range = config.DEPOT_CONTROL_PACKET_RANGE,
                  depot_coordinates=config.DEPOT_COO,
                  event_duration=config.EVENTS_DURATION,
                  event_generation_prob=config.P_FEEL_EVENT,
@@ -56,6 +57,7 @@ class Simulator:
         self.env_width = env_width
         self.env_height = env_height
         self.depot_com_range = depot_com_range
+        self.depot_control_com_range = depot_control_com_range
         self.depot_coordinates = depot_coordinates
         self.len_simulation = len_simulation
         self.time_step_duration = time_step_duration
@@ -210,11 +212,15 @@ class Simulator:
             # sense the events
             self.event_generator.handle_events_generation(cur_step, self.drones)
 
+            # Start node discovery
+            self.depot.start_discovery()
+
             for drone in self.drones:
                 # 1. update expired packets on drone buffers
                 # 2. try routing packets vs other drones or depot
                 # 3. actually move the drone towards next waypoint or depot
 
+                drone.reset_discovery_info()
                 drone.update_packets(cur_step)
                 drone.routing(self.drones, self.depot, cur_step)
                 drone.move(self.time_step_duration)
@@ -226,6 +232,72 @@ class Simulator:
             if self.show_plot or config.SAVE_PLOT:
                 self.__plot(cur_step)
 
+            #TODO: DEBUGGING TESTS
+            #####################################################################
+            #TODO: Lost acks debug
+            def check_if_lost_ack(drone):
+                if drone.identifier in self.metrics.sent_acks:
+                    acks_received = self.metrics.sent_acks[drone.identifier]
+                    neighbor_table = drone.neighbor_table.get_drones()
+                    lost_drones = set(acks_received).difference(neighbor_table)
+                    return lost_drones
+                return set()
+            
+            def check_if_lost_ack_depot():
+                if self.depot.identifier in self.metrics.sent_acks:
+                    acks_received = self.metrics.sent_acks[self.depot.identifier]
+                    neighbor_table = set(self.depot.nodes_table.nodes_list.keys())
+                    lost_drones = {drone.identifier for drone in acks_received}.difference(neighbor_table)
+                    return lost_drones
+                return set()
+            
+            for drone in self.drones:
+                lost_drones = check_if_lost_ack(drone)
+                if lost_drones != set():
+                    print(f"Lost drones: {lost_drones}")
+            depot_lost_drones = check_if_lost_ack_depot()
+            if depot_lost_drones != set():
+                print(f"Depot lost drones: {depot_lost_drones}")
+
+            # TEST_DRONE_ID = 5
+            # sent_acks = []
+            # if TEST_DRONE_ID in self.metrics.sent_acks:
+            #     sent_acks = self.metrics.sent_acks[TEST_DRONE_ID]
+            #     print(f"Acks sent to drone {TEST_DRONE_ID}: {sent_acks}")
+            # print(f"Drone {TEST_DRONE_ID}'s neighbor table: {self.drones[TEST_DRONE_ID].neighbor_table.get_drones()}")
+            # assert([id for id in sent_acks if id not in self.drones[TEST_DRONE_ID].neighbor_table.neighbors_list.keys()] != [])
+            # else: print(f"No ack is sent by drone {TEST_DRONE_ID}")
+            self.metrics.sent_acks = {}
+            #TODO: some acks are lost, meaning that the drone TEST_DRONE_ID receives an ack form a drone X, but that drone X isn't inserted 
+            # in the TEST_DRONE_ID's neighbor table.
+
+            #TODO: Verify that chain of drones is correct
+            # If the depot is connected through a drone multi-hop, meaning passing through other drones, this drone should appear in its discovery
+            # Meaning that the depot should have the union of chains of drones that start from it.
+            # def multi_hop_connection(entity):
+            #     multi_hop_nodes = []
+            #     direct_neighbors = [drone for drone in self.drones if utilities.euclidean_distance(entity.coords, drone.coords) <= entity.communication_range and drone != entity]
+            #     for drone in direct_neighbors:
+            #         multi_hop_nodes.append(drone.identifier)
+            #         multi_hop_nodes += multi_hop_connection(drone)
+            #     return multi_hop_nodes
+            # discovered_nodes = list(self.depot.nodes_table.nodes_list.keys())
+            # multi_hop_nodes = multi_hop_connection(self.depot)
+            # print(f"Discovered nodes: {discovered_nodes}, Multi hop nodes: {multi_hop_nodes} at current step {cur_step}")
+            # TODO: some nodes are not discovered right away
+            # It could be caused by the fact that the drone has already a parent node, caused by the hop problem.
+            # lost_drones = list(set(multi_hop_nodes).difference(discovered_nodes))
+            # for drone in lost_drones:
+            #     drone_object = self.drones[drone]
+            #     print(f"{drone} is near the depot and has parent node: {drone_object.parent_node}")
+            # TODO: this never happens, so that must be caused by something else.
+            # Nevermind I'm stupid, it happens because the drone has to have the depot in its neighbors, and not the opposite
+            # since the depot communication range is bigger than the drone communication range.
+            #####################################################################    
+            
+            for drone in self.drones:
+                drone.reset_neighbors_table()
+            
         if config.DEBUG:
             print("End of simulation, sim time: " + str(
                 (cur_step + 1) * self.time_step_duration) + " sec, #iteration: " + str(cur_step + 1))
@@ -233,7 +305,6 @@ class Simulator:
     def close(self):
         """ do some stuff at the end of simulation"""
         print("Closing simulation")
-
         self.print_metrics(plot_id="final")
         self.save_metrics(config.ROOT_EVALUATION_DATA + self.simulation_name)
 
