@@ -69,7 +69,7 @@ class QlearningStepwiseRouting(BASE_routing):
         link_quality_sum = {}
         for j in opt_neighbors:
             link_quality_sum[j[-1].identifier] = compute_past_link_quality(self, j[-1])
-        print(link_quality_sum)
+        # print(link_quality_sum)
         link_stability = np.array([(1-self.BETA)*math.exp(1/drones_speed[j])+self.BETA for j in range(len(self.simulator.drones))])
        
         self.taken_actions[packet.event_ref.identifier] = (state, action)

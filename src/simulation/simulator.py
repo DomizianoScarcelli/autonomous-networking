@@ -225,23 +225,68 @@ class Simulator:
                 drone.routing(self.drones, self.depot, cur_step)
                 drone.move(self.time_step_duration)
 
-            '''To delete: print nodes table'''
-            #print(str(cur_step) + ": " + str(self.depot.nodes_table.nodes_list))
-            for drone in self.drones:
-                drone.reset_neighbors_table()
-
             # in case we need probability map
             if config.ENABLE_PROBABILITIES:
                 self.increase_meetings_probs(self.drones, cur_step)
 
             if self.show_plot or config.SAVE_PLOT:
                 self.__plot(cur_step)
-                
-            # #TODO: debug
-            # lost_acks = {ack_sender for ack_sender in self.metrics.sent_acks if ack_sender not in self.depot.nodes_table.nodes_list.keys()}
-            # print(f"Lost acks: {lost_acks}")
-            # lost_acks.clear()
 
+            #TODO: DEBUGGING TESTS
+            #####################################################################
+            #TODO: Lost acks debug
+            def check_if_lost_ack(drone):
+                if drone.identifier in self.metrics.sent_acks:
+                    acks_received = self.metrics.sent_acks[drone.identifier]
+                    neighbor_table = drone.neighbor_table.get_drones()
+                    lost_drones = set(acks_received).difference(neighbor_table)
+                    return lost_drones
+                return set()
+            
+            for drone in self.drones:
+                lost_drones = check_if_lost_ack(drone)
+                if lost_drones != set():
+                    print(f"Lost drones: {lost_drones}")
+
+            # TEST_DRONE_ID = 5
+            # sent_acks = []
+            # if TEST_DRONE_ID in self.metrics.sent_acks:
+            #     sent_acks = self.metrics.sent_acks[TEST_DRONE_ID]
+            #     print(f"Acks sent to drone {TEST_DRONE_ID}: {sent_acks}")
+            # print(f"Drone {TEST_DRONE_ID}'s neighbor table: {self.drones[TEST_DRONE_ID].neighbor_table.get_drones()}")
+            # assert([id for id in sent_acks if id not in self.drones[TEST_DRONE_ID].neighbor_table.neighbors_list.keys()] != [])
+            # else: print(f"No ack is sent by drone {TEST_DRONE_ID}")
+            self.metrics.sent_acks = {}
+            #TODO: some acks are lost, meaning that the drone TEST_DRONE_ID receives an ack form a drone X, but that drone X isn't inserted 
+            # in the TEST_DRONE_ID's neighbor table.
+
+            #TODO: Verify that chain of drones is correct
+            # If the depot is connected through a drone multi-hop, meaning passing through other drones, this drone should appear in its discovery
+            # Meaning that the depot should have the union of chains of drones that start from it.
+            # def multi_hop_connection(entity):
+            #     multi_hop_nodes = []
+            #     direct_neighbors = [drone for drone in self.drones if utilities.euclidean_distance(entity.coords, drone.coords) <= entity.communication_range and drone != entity]
+            #     for drone in direct_neighbors:
+            #         multi_hop_nodes.append(drone.identifier)
+            #         multi_hop_nodes += multi_hop_connection(drone)
+            #     return multi_hop_nodes
+            # discovered_nodes = list(self.depot.nodes_table.nodes_list.keys())
+            # multi_hop_nodes = multi_hop_connection(self.depot)
+            # print(f"Discovered nodes: {discovered_nodes}, Multi hop nodes: {multi_hop_nodes} at current step {cur_step}")
+            # TODO: some nodes are not discovered right away
+            # It could be caused by the fact that the drone has already a parent node, caused by the hop problem.
+            # lost_drones = list(set(multi_hop_nodes).difference(discovered_nodes))
+            # for drone in lost_drones:
+            #     drone_object = self.drones[drone]
+            #     print(f"{drone} is near the depot and has parent node: {drone_object.parent_node}")
+            # TODO: this never happens, so that must be caused by something else.
+            # Nevermind I'm stupid, it happens because the drone has to have the depot in its neighbors, and not the opposite
+            # since the depot communication range is bigger than the drone communication range.
+            #####################################################################    
+            
+            for drone in self.drones:
+                drone.reset_neighbors_table()
+            
         if config.DEBUG:
             print("End of simulation, sim time: " + str(
                 (cur_step + 1) * self.time_step_duration) + " sec, #iteration: " + str(cur_step + 1))

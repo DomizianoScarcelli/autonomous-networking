@@ -55,7 +55,7 @@ SAVE_PLOT_DIR = "data/plots/"
 # ----------------------------- SIMULATION PARAMS. ---------------------------- #
 SIM_DURATION = 15000   # int: steps of simulation. # ***
 TS_DURATION = 0.150   # float: seconds duration of a step in seconds.
-SEED = 13         # int: seed of this simulation.
+SEED = 10         # int: seed of this simulation.
 
 N_DRONES = 30      # int: number of drones. # ***
 ENV_WIDTH = 1500      # float: meters, width of environment.

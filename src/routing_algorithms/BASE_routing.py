@@ -111,7 +111,7 @@ class BASE_routing(metaclass=abc.ABCMeta):
             #     print(f"Bad neighbors: {bad_neighbors}")
             # else:
             #     print(f"Computed neighbors are correct!")
-                print(f"Neighbor table: {self.simulator.depot.nodes_table}")
+                # print(f"Neighbor table: {self.simulator.depot.nodes_table}")
             ###############################################################################
 
             if len(opt_neighbors) == 0:
