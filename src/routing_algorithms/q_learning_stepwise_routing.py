@@ -64,9 +64,12 @@ class QlearningStepwiseRouting(BASE_routing):
         action = self.drone
         
         update_link_quality(self, self.drone)
-        print(self.link_qualities)
+        #print(self.link_qualities)
         drones_speed = compute_nodes_speed(self, self.drone, self.simulator.drones)
-        link_quality = compute_past_link_quality(self, self.drone)
+        link_quality_sum = {}
+        for j in opt_neighbors:
+            link_quality_sum[j[-1].identifier] = compute_past_link_quality(self, j[-1])
+        print(link_quality_sum)
         link_stability = np.array([(1-self.BETA)*math.exp(1/drones_speed[j])+self.BETA for j in range(len(self.simulator.drones))])
        
         self.taken_actions[packet.event_ref.identifier] = (state, action)
@@ -118,9 +121,14 @@ def update_link_quality(self, self_drone):
     '''
     starting_point = 0 if (self.simulator.cur_step < config.RETRANSMISSION_DELAY) or (len(self.link_qualities.keys()) == 0) else max(self.link_qualities.keys()) #self.simulator.cur_step-config.RETRANSMISSION_DELAY
     for step in range(starting_point, self.simulator.cur_step):
-        self.link_qualities[step] = self.simulator.metrics.get_link_quality(self_drone)
+        i = self.drone
+        link_qualities = []
+        for j in self.simulator.drones:
+            link_quality_ij = np.exp(-7*(util.euclidean_distance(i.coords, j.coords)/config.COMMUNICATION_RANGE_DRONE)) if i != j else 0
+            link_qualities.append(link_quality_ij)
+        self.link_qualities[step] = link_qualities
 
-def compute_past_link_quality(self):
+def compute_past_link_quality(self, neighbor):
     '''
     sum_lower_bound = len(drones) if self.simulator.cur_step > len(drones) else 0
     #print(self.simulator.cur_step)
@@ -130,11 +138,19 @@ def compute_past_link_quality(self):
         old_link_qualities = np.sum([old_link_qualities, link_quality_k])
     return old_link_qualities
     '''
+    '''
     link_quality = 0
     sum_lower_bound = self.simulator.cur_step-len(self.simulator.drones) if self.simulator.cur_step >= len(self.simulator.drones) else 0
     for k in range(sum_lower_bound, self.simulator.cur_step-1):
         link_quality += self.link_qualities[k]
     return link_quality
+    '''
+    link_quality = 0
+    sum_lower_bound = self.simulator.cur_step-len(self.simulator.drones) if self.simulator.cur_step >= len(self.simulator.drones) else 0
+    for k in range(sum_lower_bound, self.simulator.cur_step-1):
+        link_quality += self.link_qualities[k][neighbor.identifier]
+    return link_quality
+
 
 
 #TO CHANGE TOO! (how to compute? - 𝑣_i,j represents the speed at which nodes 𝑖 and 𝑗 are moving away)
