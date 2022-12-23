@@ -9,14 +9,14 @@ class QlearningStepwiseRouting(BASE_routing):
 
     def __init__(self, drone, simulator):
         BASE_routing.__init__(self, drone, simulator)
-        self.LEARNING_RATE = 0.8 #alpha (the learning rate)
-        self.DISCOUNT_FACTOR = 0.1 #gamma (it represents the importance of future rewards)
-        self.EPSILON = 0.4 #epsilon (it is used in episolon greedy)
-        self.BETA = 0.1 #Coefficient weight value (to change!)
+        self.LEARNING_RATE = 0.8 # alpha (the learning rate)
+        self.DISCOUNT_FACTOR = 0.1 # gamma (it represents the importance of future rewards)
+        self.EPSILON = 0.4 # epsilon (it is used in episolon greedy)
+        self.BETA = 0.1 # Coefficient weight value (to change!)
 
-        self.random = np.random.RandomState(self.simulator.seed) #it generates a random value to be used in epsilon greedy
+        self.random = np.random.RandomState(self.simulator.seed) # it generates a random value to be used in epsilon greedy
         self.taken_actions = {}  # id event : (old_state, old_action)
-        self.link_qualities = {} #In order to calculate it, we considered the packet transmission time and packet delivery ratio. To calculate this, the Window Mean with Exponentially Weighted Moving Average (WMEWMA) method[9] was used. Note: for the moment I consider the distance between node.
+        self.link_qualities = {} # In order to calculate it, we considered the packet transmission time and packet delivery ratio. To calculate this, the Window Mean with Exponentially Weighted Moving Average (WMEWMA) method[9] was used. Note: for the moment I consider the distance between node.
         self.q_table = {}
 
         #print(self.link_quality)
