@@ -114,6 +114,10 @@ class BASE_routing(metaclass=abc.ABCMeta):
                 # print(f"Neighbor table: {self.simulator.depot.nodes_table}")
             ###############################################################################
 
+                print(f"Depot table: {self.simulator.depot.nodes_table}")
+                for drone in self.simulator.drones:
+                    print(f"Neighbor table {drone.identifier}: {self.drone.neighbor_table}")
+
             if len(opt_neighbors) == 0:
                 return
 
