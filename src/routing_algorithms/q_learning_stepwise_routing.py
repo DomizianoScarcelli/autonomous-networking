@@ -13,11 +13,12 @@ class QlearningStepwiseRouting(BASE_routing):
         self.DISCOUNT_FACTOR = 0.1 # gamma (it represents the importance of future rewards)
         self.EPSILON = 0.4 # epsilon (it is used in episolon greedy)
         self.BETA = 0.1 # Coefficient weight value (to change!)
+        self.OMEGA = 0.1 #Used in the reward function
 
         self.random = np.random.RandomState(self.simulator.seed) # it generates a random value to be used in epsilon greedy
         self.taken_actions = {}  # id event : (old_state, old_action)
         self.link_qualities = {} # In order to calculate it, we considered the packet transmission time and packet delivery ratio. To calculate this, the Window Mean with Exponentially Weighted Moving Average (WMEWMA) method[9] was used. Note: for the moment I consider the distance between node.
-        self.q_table = {}
+        self.q_table = {} #{drone_1: [drone_1, drone_2, ..., drone_n], .., drone_n: [drone_1, drone_2, ..., drone_n]}
 
         #print(self.link_quality)
 
@@ -80,18 +81,18 @@ class QlearningStepwiseRouting(BASE_routing):
     #TO CHANGE!
     def compute_reward(self, drone, delay, outcome):
         reward = 0
-        if outcome == -1:
-            if delay >= 2000 and delay < 3500:
-                reward =- 15
-            else:
-                reward =- 30
-        else:
-            pkts = drone.buffer_length()
-            if delay < 1000:
-                reward += (pkts * 2) + 30
-            else:
-                reward += (pkts * 2) + 15
-        return reward
+        # if outcome == -1:
+        #     if delay >= 2000 and delay < 3500:
+        #         reward =- 15
+        #     else:
+        #         reward =- 30
+        # else:
+        #     pkts = drone.buffer_length()
+        #     if delay < 1000:
+        #         reward += (pkts * 2) + 30
+        #     else:
+        #         reward += (pkts * 2) + 15
+        # return reward
     
     #Compute the cell index of the drone (if next = True returns the cell of the next target) (WE DON'T NEED IT ANYMORE - BUT LEAVE IT FOR NOW)
     def compute_cell_index(self, drone, next):
