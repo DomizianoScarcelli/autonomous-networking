@@ -92,7 +92,7 @@ class QlearningStepwiseRouting(BASE_routing):
         #         reward += (pkts * 2) + 30
         #     else:
         #         reward += (pkts * 2) + 15
-        # return reward
+        return reward
     
     #Compute the cell index of the drone (if next = True returns the cell of the next target) (WE DON'T NEED IT ANYMORE - BUT LEAVE IT FOR NOW)
     def compute_cell_index(self, drone, next):
