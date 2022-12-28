@@ -56,7 +56,7 @@ SAVE_PLOT_DIR = "data/plots/"
 # ----------------------------- SIMULATION PARAMS. ---------------------------- #
 SIM_DURATION = 15000   # int: steps of simulation. # ***
 TS_DURATION = 0.150   # float: seconds duration of a step in seconds.
-SEED = 5         # int: seed of this simulation.
+SEED = 20         # int: seed of this simulation.
 
 N_DRONES = 20      # int: number of drones. # ***
 ENV_WIDTH = 1500      # float: meters, width of environment.
@@ -109,7 +109,7 @@ CHANNEL_ERROR_TYPE = ChannelError.GAUSSIAN
 COMMUNICATION_P_SUCCESS = 1   # float: probability to have success in a communication.
 GUASSIAN_SCALE = .9            # float [0,1]: scale the error probability of the guassian -> success * GUASSIAN_SCALER
 PACKETS_MAX_TTL = 200         # float: threshold in the maximum number of hops. Causes loss of packets.
-RETRANSMISSION_DELAY = 10     # int: how many time steps to wait before transmit again (for k retransmissions). # ---  #delta_k
+RETRANSMISSION_DELAY = 50     # int: how many time steps to wait before transmit again (for k retransmissions). # ---  #delta_k
 
 # ------------------------------------------- ROUTING MISC --------------------------------- #
 DISCOVERY_DELAY = 5            # int : how many time steps wait before transmit again an hello message

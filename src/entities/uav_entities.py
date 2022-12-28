@@ -318,7 +318,7 @@ class Depot(Entity):
 
         for pck in packets_to_offload:
 
-            if self.simulator.routing_algorithm.name not in "GEO" "RND" "GEOS":
+            if self.simulator.routing_algorithm.name not in "GEO" "RND" "GEOS" "QLS":
 
                 feedback = 1
                 delivery_delay = cur_step - pck.event_ref.current_time
@@ -328,6 +328,7 @@ class Depot(Entity):
                                                      pck.event_ref.identifier,
                                                      delivery_delay,
                                                      feedback)
+
             #print(f"DEPOT -> Drone {current_drone.identifier} packet: {pck.event_ref} total packets in sim: {len(self.simulator.metrics.drones_packets_to_depot)}")
             # add metrics: all the packets notified to the depot
             self.simulator.metrics.drones_packets_to_depot.add((pck, cur_step))
@@ -624,6 +625,14 @@ class Drone(Entity):
         self.parent_node = None
         self.set_hop_from_depot(None, message="Resetting discovery state")
         self.neighbor_table = NeighborTable(self.simulator, self)
+
+    def reset_neighbors_table(self):
+        self.neighbor_table = NeighborTable(self.simulator)
+    
+    def compute_reward(self):
+        if self.simulator.routing_algorithm.name == "QLS":
+            for drone in self.simulator.drones:
+                drone.routing_algorithm.compute_reward(self)
 
     def update_packets(self, cur_step):
         """
