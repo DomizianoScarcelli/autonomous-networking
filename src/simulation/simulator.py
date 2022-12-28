@@ -261,10 +261,11 @@ class Simulator:
 
             # self.metrics.sent_acks = {}
 
+            #TODO: (Debug) ##############################################
             if len(self.depot.nodes_table.nodes_list) != 0:
-                print(f"Depot neighbors: {self.depot.nodes_table.nodes_list}, with max hop: {max(self.depot.nodes_table.nodes_list, key=lambda key: self.depot.nodes_table.nodes_list[key].hop_count)}")
-                #TODO: Everything seem to work, but the hop count is not right: For example here only one node is in the neighborhood but the hop count is 5
-            else: print("Depot has no neighbors")
+                print(f"Depot neighbors: {self.depot.nodes_table.nodes_list}")
+            # else: print("Depot has no neighbors")
+            ############################################################
 
             drone: Drone
             for drone in self.drones:

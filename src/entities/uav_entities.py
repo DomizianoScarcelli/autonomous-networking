@@ -184,7 +184,7 @@ class HelloPacket(Packet):
         self.src_drone = src_drone  # Don't use this
 
 class DiscoveryPacket(Packet):
-    def __init__(self, entity, simulator, hop_count = 1):
+    def __init__(self, entity, simulator, hop_count = 0):
         super().__init__(simulator.cur_step, simulator, None)
         self.entity = entity
         self.hop_count = hop_count
@@ -212,6 +212,9 @@ class NodeInfo():
         self.self_moving_speed = self_moving_speed
         self.self_location = self_location
         self.hop_count = hop_count
+    
+    def __repr__(self) -> str:
+        return f"Self: {self.self_id}, moving speed: {self.self_moving_speed}, location: {self.self_location}, hop count: {self.hop_count}"
 
 class NodesTable():
     def __init__(self):
@@ -408,12 +411,13 @@ class Drone(Entity):
         for child in childs: 
             child.update_newest_hop_count(hop_count_diff)
     
-    def update_hop_count_bridge(self, hop_count_bridge):
+    def update_hop_count_bridge(self, hop_count_bridge): #TODO: error maximum recursion when the conglomerate of drones in near the depot
         print(f"Bridging to: {hop_count_bridge + 1}")
         self.hop_from_depot = hop_count_bridge + 1
         childs = self.get_childs()
+        child: Drone
         for child in childs:
-            child.update_hop_count_bridge(self, self.hop_from_depot)
+            child.update_hop_count_bridge(self.hop_from_depot)
     
     def update_parent(self, new_parent, new_hop_count):
         """

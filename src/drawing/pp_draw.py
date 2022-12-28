@@ -2,6 +2,7 @@ from src.drawing import stddraw
 from src.entities.uav_entities import Environment
 from src.utilities import config, utilities
 from collections import defaultdict
+from ..entities.uav_entities import Drone
 
 #printer the environment 
 class PathPlanningDrawer():
@@ -161,11 +162,14 @@ class PathPlanningDrawer():
         stddraw.line(drone_coo[0], drone_coo[1], target[0], target[1])
         self.__reset_pen()
 
-    def __draw_drone_info(self, drone, cur_step):
+    def __draw_drone_info(self, drone: Drone, cur_step):
         stddraw.setPenRadius(0.0125)
         stddraw.setPenColor(c=stddraw.BLACK)
         # life time and speed
         stddraw.text(drone.coords[0]-50, drone.coords[1], "buf: " + str(drone.buffer_length()))
+        #TODO: (debug) drawing hop_count_from_depot and number of neighbors
+        stddraw.text(drone.coords[0], drone.coords[1]+25, "hop: " + str(drone.hop_from_depot))
+        stddraw.text(drone.coords[0], drone.coords[1]-25, "nbs: " + str(len(drone.neighbor_table.neighbors_list)))
         # index
         stddraw.text(drone.coords[0], drone.coords[1] + (drone.communication_range / 2.0), "id: " + str(drone.identifier))
 
