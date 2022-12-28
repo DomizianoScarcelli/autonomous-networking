@@ -235,35 +235,44 @@ class Simulator:
             #TODO: DEBUGGING TESTS
             #####################################################################
             #TODO: Lost acks debug
-            def check_if_lost_ack(drone):
-                if drone.identifier in self.metrics.sent_acks:
-                    acks_received = self.metrics.sent_acks[drone.identifier]
-                    neighbor_table = drone.neighbor_table.get_drones()
-                    lost_drones = set(acks_received).difference(neighbor_table)
-                    return lost_drones
-                return set()
+            # def check_if_lost_ack(drone):
+            #     if drone.identifier in self.metrics.sent_acks:
+            #         acks_received = self.metrics.sent_acks[drone.identifier]
+            #         neighbor_table = drone.neighbor_table.get_drones()
+            #         lost_drones = set(acks_received).difference(neighbor_table)
+            #         return lost_drones
+            #     return set()
             
-            def check_if_lost_ack_depot():
-                if self.depot.identifier in self.metrics.sent_acks:
-                    acks_received = self.metrics.sent_acks[self.depot.identifier]
-                    neighbor_table = set(self.depot.nodes_table.nodes_list.keys())
-                    lost_drones = {drone.identifier for drone in acks_received}.difference(neighbor_table)
-                    return lost_drones
-                return set()
+            # def check_if_lost_ack_depot():
+            #     if self.depot.identifier in self.metrics.sent_acks:
+            #         acks_received = self.metrics.sent_acks[self.depot.identifier]
+            #         neighbor_table = set(self.depot.nodes_table.nodes_list.keys())
+            #         lost_drones = {drone.identifier for drone in acks_received}.difference(neighbor_table)
+            #         return lost_drones
+            #     return set()
             
-            for drone in self.drones:
-                lost_drones = check_if_lost_ack(drone)
-                if lost_drones != set():
-                    print(f"Lost drones: {lost_drones}")
-            depot_lost_drones = check_if_lost_ack_depot()
-            if depot_lost_drones != set():
-                print(f"Depot lost drones: {depot_lost_drones}")
+            # for drone in self.drones:
+            #     lost_drones = check_if_lost_ack(drone)
+            #     if lost_drones != set():
+            #         print(f"Lost drones: {lost_drones}")
+            # depot_lost_drones = check_if_lost_ack_depot()
+            # if depot_lost_drones != set():
+            #     print(f"Depot lost drones: {depot_lost_drones}")
 
-            self.metrics.sent_acks = {}
-            
+            # self.metrics.sent_acks = {}
+
+            if len(self.depot.nodes_table.nodes_list) != 0:
+                print(f"Depot neighbors: {self.depot.nodes_table.nodes_list}, with max hop: {max(self.depot.nodes_table.nodes_list, key=lambda key: self.depot.nodes_table.nodes_list[key].hop_count)}")
+                #TODO: Everything seem to work, but the hop count is not right: For example here only one node is in the neighborhood but the hop count is 5
+            else: print("Depot has no neighbors")
+
+            drone: Drone
             for drone in self.drones:
-                drone.reset_neighbors_table()
+                # if drone.neighbor_table.neighbors_list != {}:
+                #     print(f"Neighbors of {drone}: {drone.neighbor_table.neighbors_list}")
+                drone.reset_discovery_state()
             
+        
         if config.DEBUG:
             print("End of simulation, sim time: " + str(
                 (cur_step + 1) * self.time_step_duration) + " sec, #iteration: " + str(cur_step + 1))

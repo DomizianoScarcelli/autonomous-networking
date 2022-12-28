@@ -40,7 +40,7 @@ DEBUG = False                         # bool: whether to print debug strings or 
 EXPERIMENTS_DIR = "data/evaluation_tests/"  # output data : the results of the simulation
 
 # drawing
-PLOT_SIM = False     # bool: whether to plot or not the simulation.
+PLOT_SIM = True     # bool: whether to plot or not the simulation.
 WAIT_SIM_STEP = 0 #.1     # float: seconds, pauses the rendering for 'DELAY_PLOT' seconds.
 SKIP_SIM_STEP = 10      # int: steps, plot the simulation every 'RENDERING_STEP' steps. At least 1.
 DRAW_SIZE = 700       # int: size of the drawing window.
@@ -53,9 +53,9 @@ SAVE_PLOT_DIR = "data/plots/"
 # add constants here...
 
 # ----------------------------- SIMULATION PARAMS. ---------------------------- #
-SIM_DURATION = 1500   # int: steps of simulation. # ***
+SIM_DURATION = 15000   # int: steps of simulation. # ***
 TS_DURATION = 0.150   # float: seconds duration of a step in seconds.
-SEED = 10         # int: seed of this simulation.
+SEED = 21         # int: seed of this simulation.
 
 N_DRONES = 30      # int: number of drones. # ***
 ENV_WIDTH = 1500      # float: meters, width of environment.
