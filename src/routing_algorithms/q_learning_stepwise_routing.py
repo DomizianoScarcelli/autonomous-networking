@@ -14,11 +14,14 @@ class QlearningStepwiseRouting(BASE_routing):
         self.EPSILON = 0.4 #epsilon (it is used in episolon greedy)
         self.BETA = 0.1 #Coefficient weight value (to change!)
         self.OMEGA = 0.1 #Used in the reward function
+        self.RMAX = 2
+        self.RMIN = 0
 
         self.random = np.random.RandomState(self.simulator.seed) #it generates a random value to be used in epsilon greedy
-        self.taken_actions = {}  # id event : (old_state, old_action)
         self.link_qualities = {} #In order to calculate it, we considered the packet transmission time and packet delivery ratio. To calculate this, the Window Mean with Exponentially Weighted Moving Average (WMEWMA) method[9] was used. Note: for the moment I consider the distance between node.
         self.q_table = {} #{drone_1: [drone_1, drone_2, ..., drone_n], .., drone_n: [drone_1, drone_2, ..., drone_n]}
+        self.link_stability = {}
+        self.old_state = None
 
         #print(self.link_quality)
 
@@ -32,25 +35,32 @@ class QlearningStepwiseRouting(BASE_routing):
         @param outcome: -1 or 1 (read below)
         @return:
         """
-        # Packets that we delivered and still need a feedback
-        #print(self.taken_actions)
 
-        # outcome can be:
-        #
-        # -1 if the packet/event expired;
-        # 1 if the packets has been delivered to the depot
-        #print(drone, id_event, delay, outcome)
-
-        # remove the entry, the action has received the feedback
-        # Be aware, due to network errors we can give the same event to multiple drones and receive multiple
-        # feedback for the same packet!!
-        if id_event in self.taken_actions:
-            state, action = self.taken_actions[id_event] #Old state and action
-            reward = self.compute_reward(drone, delay, outcome)
-            self.update_qtable(action, state, reward)
-            del self.taken_actions[id_event]
-
-
+    #TO CHANGE!
+    def compute_reward(self, drone):
+        reward = None
+        distance_cur_drone_depot = util.euclidean_distance(drone.coords, self.simulator.depot.coords)
+        distance_old_drone_depot = util.euclidean_distance(drone.coords, self.simulator.depot.coords)
+        # If the drone is in the communication range of the depot and it has packets to deliver, then we give maximum reward
+        if distance_cur_drone_depot and drone.buffer_length() != 0 <= config.DEPOT_COMMUNICATION_RANGE:
+            reward = self.RMAX
+        elif distance_old_drone_depot > distance_cur_drone_depot: #If the drone selected as the best action is far away from the depot with respect to the last drone, then we give minimum reward 
+            reward = self.RMIN
+        else: 
+            if drone.identifier in self.simulator.depot.nodes_table.nodes_list:
+                hop = self.simulator.depot.nodes_table.nodes_list[drone.identifier].hop_count
+                if hop != None and len(self.link_stability.keys()) != 0:
+                    reward = self.OMEGA*np.exp(1/hop) + (1-self.OMEGA)*self.link_stability[drone.identifier]
+                    if reward > self.RMAX:
+                        self.RMAX = reward
+                    if reward < self.RMIN:
+                        self.RMIX = reward
+            else:
+                if len(self.link_stability.keys()) != 0:
+                    reward = self.link_stability[drone.identifier]
+        if self.old_state != None and reward != None:
+            self.update_qtable(self.old_state.identifier, self.drone.identifier, self.drone.identifier, reward)
+        
     def relay_selection(self, opt_neighbors: list, packet):
         """
         This function returns the best relay to send packets.
@@ -59,46 +69,38 @@ class QlearningStepwiseRouting(BASE_routing):
         @return: The best drone to use as relay
         """
         
-        state = self.compute_cell_index(self.drone, False)
-        self.check_state(state)
-
-        action = self.drone
-        
-        self.update_link_quality(self.drone)
+        self.check_state(self.drone.identifier)
+        #self.update_link_quality(self.drone) #WORKS GOOD BUT NEED OPTIMIZATION!
         #print(self.link_qualities)
         drones_speed = self.compute_nodes_speed(self.drone, self.simulator.drones)
         link_quality_sum = {}
-        for j in opt_neighbors:
-            link_quality_sum[j[-1].identifier] = self.compute_past_link_quality(j[-1])
-        # print(link_quality_sum)
-        link_stability = np.array([(1-self.BETA)*math.exp(1/drones_speed[j])+self.BETA for j in range(len(self.simulator.drones))])
-       
-        self.taken_actions[packet.event_ref.identifier] = (state, action)
-        next_state = self.compute_cell_index(self.drone, True)
-        self.check_state(next_state)
-        return action
+        for drone in self.simulator.drones:
+            #link_quality_sum[drone.identifier] = self.compute_past_link_quality(drone)
+            link_quality_sum[drone.identifier] = 1
+            self.link_stability[drone.identifier] = (1-self.BETA)*np.exp(1/drones_speed[drone.identifier])+self.BETA*(link_quality_sum[drone.identifier]/len(self.simulator.drones))
+        
+        self.old_state = self.drone
+        if len(opt_neighbors) == 0:
+            return self.drone
+        else:
+            best_neighbor = (None, None) # (Drone, QValue)
+            for neighbor in opt_neighbors:
+                if  best_neighbor[0] == None or self.q_table[self.drone.identifier][neighbor[-1].identifier] > best_neighbor[1]:
+                    best_neighbor = (neighbor[-1], self.q_table[self.drone.identifier][neighbor[-1].identifier])
+            return best_neighbor[0]
 
-    #TO CHANGE!
-    def compute_reward(self, drone, delay, outcome):
-        reward = 0
-
-    
-    #Compute the cell index of the drone (if next = True returns the cell of the next target) (WE DON'T NEED IT ANYMORE - BUT LEAVE IT FOR NOW)
-    def compute_cell_index(self, drone, next):
-        pos = drone.next_target()[1] if next else drone.coords[1]
-        cell_index = util.TraversedCells.coord_to_cell(size_cell=self.simulator.prob_size_cell, width_area=self.simulator.env_width, x_pos=drone.coords[0], y_pos=pos)[0]
-        return cell_index
-
-    #Check if the state exists in the QTable, otherwise it adds it (WE DON'T NEED IT ANYMORE - BUT LEAVE IT FOR NOW)
+    #Check if the state exists in the QTable, otherwise it adds it
     def check_state(self, state):
         if not state in self.q_table:
             self.q_table[state] = [0 for _ in range(self.simulator.n_drones+1)]
 
-    #Update the qtable (TO CHANGE!)
-    def update_qtable(self, drone, state, reward):
-        next_state = self.compute_cell_index(drone, True) #Next state for the drone
-        self.check_state(next_state) #Add state to qtable if it doesn't exist
-        self.q_table[state][drone.identifier] += self.LEARNING_RATE * (reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state])))
+
+    #Update the qtable
+    def update_qtable(self, state, next_state, action, reward):
+        self.check_state(state) #Add state to qtable if it doesn't exist
+        self.check_state(next_state) #Add next_state to qtable if it doesn't exist
+        self.q_table[state][action] = (1-self.LEARNING_RATE)*self.q_table[state][action] + self.LEARNING_RATE*(reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state])))
+
 
     #Save the link quality of the drone at current step
     def update_link_quality(self, cur_drone):
@@ -111,9 +113,10 @@ class QlearningStepwiseRouting(BASE_routing):
                 link_qualities.append(link_quality_ij)
             self.link_qualities[step] = link_qualities
 
+
     def compute_past_link_quality(self, neighbor):
         link_quality = 0
-        sum_lower_bound = self.simulator.cur_step-len(self.simulator.drones) if self.simulator.cur_step >= len(self.simulator.drones) else 0
+        sum_lower_bound = self.simulator.cur_step-self.simulator.n_drones if self.simulator.cur_step >= self.simulator.n_drones else 0
         for k in range(sum_lower_bound, self.simulator.cur_step-1):
             link_quality += self.link_qualities[k][neighbor.identifier]
         return link_quality

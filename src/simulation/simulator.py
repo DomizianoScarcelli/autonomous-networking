@@ -222,6 +222,7 @@ class Simulator:
 
                 drone.reset_discovery_info()
                 drone.update_packets(cur_step)
+                drone.compute_reward()
                 drone.routing(self.drones, self.depot, cur_step)
                 drone.move(self.time_step_duration)
 
