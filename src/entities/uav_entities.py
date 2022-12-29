@@ -422,7 +422,7 @@ class Drone(Entity):
 
                 to_remove_packets += 1
 
-                if self.simulator.routing_algorithm.name not in "GEO" "RND" "GEOS":
+                if self.simulator.routing_algorithm.name not in "GEO" "RND" "GEOS" "QLS":
 
                     feedback = -1
                     current_drone = self
