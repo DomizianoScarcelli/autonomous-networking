@@ -166,10 +166,10 @@ class PathPlanningDrawer():
         stddraw.setPenRadius(0.0125)
         stddraw.setPenColor(c=stddraw.BLACK)
         # life time and speed
-        stddraw.text(drone.coords[0]-50, drone.coords[1], "buf: " + str(drone.buffer_length()))
-        #TODO: (debug) drawing hop_count_from_depot and number of neighbors
-        stddraw.text(drone.coords[0], drone.coords[1]+25, "hop: " + str(drone.hop_from_depot))
-        stddraw.text(drone.coords[0], drone.coords[1]-25, "nbs: " + str(len(drone.neighbor_table.neighbors_list)))
+        # stddraw.text(drone.coords[0]-50, drone.coords[1], "buf: " + str(drone.buffer_length()))
+        # #TODO: (debug) drawing hop_count_from_depot and number of neighbors
+        # stddraw.text(drone.coords[0], drone.coords[1]+25, "hop: " + str(drone.hop_from_depot))
+        # stddraw.text(drone.coords[0], drone.coords[1]-25, "nbs: " + str(len(drone.neighbor_table.neighbors_list)))
         # index
         stddraw.text(drone.coords[0], drone.coords[1] + (drone.communication_range / 2.0), "id: " + str(drone.identifier))
 

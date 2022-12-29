@@ -1,4 +1,4 @@
-
+from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.simulation.simulator import Simulator
@@ -46,8 +46,6 @@ class Tester():
         self.simulator.metrics.sent_acks = {}
     ##########################################################################
     
-
-
     # Debugging for hop_count update
     ##########################################################################
     def hop_count_tester(self):
@@ -61,4 +59,33 @@ class Tester():
             hop_counts = [node_info.hop_count > 1 for node_info in self.simulator.depot.nodes_table.nodes_list.values()]
             if any(hop_counts):
                 print(f"Depot neighbors: {self.simulator.depot.nodes_table.nodes_list}")
+    
+    def print_hop_update(self, drone: Drone, new_hop, message):
+        """
+        Everytime the hop is update to some non-None hop, the cause of the update is printed, as well as the old and new hop values.
+        """
+        # if new_hop is not None:
+        printer.print_debug_colored(252, 194, 3, f"Hop for {drone} changed from {drone.hop_from_depot} to {new_hop} because of {message}")
     ##########################################################################
+
+
+    # Debugging for discovery correctness
+    def check_drone_neighbors(self):
+        """
+        Check if the neighbors computed with the discovery are actually the correct neighbors.
+        """
+        drones = self.simulator.drones
+        drone: Drone
+        for drone in drones:
+            # Compute the correct neighbor list
+            correct_neighbor_list = {neighbor for neighbor in drones if utilities.euclidean_distance(drone.coords, neighbor.coords) <= drone.communication_range and drone != neighbor}
+            # Retrieve the neighbor list computed in the discovery phase
+            discovery_neighbor_list = set(drone.neighbor_table.get_drones())
+            assert abs(len(discovery_neighbor_list) - len(correct_neighbor_list) <= 2), f"""
+
+            Discovery phase neighbors are not correct for {drone}. Computed: {discovery_neighbor_list}, correct: {correct_neighbor_list}
+            Drone raw neighbor list: {drone.neighbor_table}
+            Distance from each drone (communication range: {drone.communication_range}):
+            {[(neighbor, utilities.euclidean_distance(drone.coords, neighbor.coords)) for neighbor in discovery_neighbor_list.union(correct_neighbor_list)]}
+            """
+            

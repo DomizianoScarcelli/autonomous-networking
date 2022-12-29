@@ -219,6 +219,7 @@ class Simulator:
             # Start node discovery
             self.depot.start_discovery()
 
+            self.tester.check_drone_neighbors()
             for drone in self.drones:
                 # 1. update expired packets on drone buffers
                 # 2. try routing packets vs other drones or depot
@@ -234,9 +235,10 @@ class Simulator:
             if self.show_plot or config.SAVE_PLOT:
                 self.__plot(cur_step)
             
-            self.tester.hop_count_test()
+            
         
             printer.print_debug_colored(197, 227, 152, "--------------------------------------------------------------------------------")
+
             drone: Drone
             for drone in self.drones:
                 drone.reset_discovery_state()
