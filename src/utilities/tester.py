@@ -67,6 +67,24 @@ class Tester():
         # if new_hop is not None:
         printer.print_debug_colored(252, 194, 3, f"Hop for {drone} changed from {drone.hop_from_depot} to {new_hop} because of {message}")
     ##########################################################################
+    
+    def print_send_dp(self, sender: Drone | Depot, receiver: Drone):
+        """
+        Prints out the sending of the discovery packet
+        """
+        printer.print_debug_colored(text=f"{sender} has sent a discovery packet to {receiver} at {self.simulator.cur_step}, they're distant {utilities.euclidean_distance(sender.coords, receiver.coords)}")
+
+    def print_receive_dp(self, sender: Drone | Depot, receiver: Drone):
+        """
+        Prints out the reception of the discovery packet
+        """
+        printer.print_debug_colored(text=f"{receiver} has received a discovery packet from {sender} at {self.simulator.cur_step}, they're distant {utilities.euclidean_distance(sender.coords, receiver.coords)}")
+
+    def print_neighborhood_flow(self, main: Drone, entry: Drone):
+        """
+        Prints out the adding ot "entry" Drone in the neighborhoo of "main"
+        """
+        printer.print_debug_colored(text=f"{main} has added {entry} in their neighborhood, now it's composed from: {main.neighbor_table.get_drones()} at {self.simulator.cur_step}, they're distant {utilities.euclidean_distance(main.coords, entry.coords)}")
 
 
     # Debugging for discovery correctness
@@ -81,11 +99,33 @@ class Tester():
             correct_neighbor_list = {neighbor for neighbor in drones if utilities.euclidean_distance(drone.coords, neighbor.coords) <= drone.communication_range and drone != neighbor}
             # Retrieve the neighbor list computed in the discovery phase
             discovery_neighbor_list = set(drone.neighbor_table.get_drones())
-            assert abs(len(discovery_neighbor_list) - len(correct_neighbor_list) <= 2), f"""
+            # #TODO: DEBUG: this is needed to bypass the fact that the parent node is not in the neighbor list right now
+            # if drone.parent_node is not None:
+            #     discovery_neighbor_list.add(drone.parent_node)
+            # #TODO: DEBUG: this is needed to bypass the fact that the node is in its neighbor list
+            # if drone in discovery_neighbor_list:
+            #     discovery_neighbor_list.remove(drone)
+            # #TODO: DEBUG: this is needed to bypass the fact that the depot is in the drone neighbor list
+            # if self.simulator.depot in discovery_neighbor_list:
+            #     discovery_neighbor_list.remove(self.simulator.depot)
+            assert discovery_neighbor_list == correct_neighbor_list, f"""
 
             Discovery phase neighbors are not correct for {drone}. Computed: {discovery_neighbor_list}, correct: {correct_neighbor_list}
             Drone raw neighbor list: {drone.neighbor_table}
             Distance from each drone (communication range: {drone.communication_range}):
             {[(neighbor, utilities.euclidean_distance(drone.coords, neighbor.coords)) for neighbor in discovery_neighbor_list.union(correct_neighbor_list)]}
+            Parent node: {drone.parent_node}
             """
-            
+    
+    def print_real_computed_neighbors(self):
+        """
+        Prints out the nodes that are geographically inside the communication range and the one computed by the discovery phase
+        """
+        drones = self.simulator.drones
+        drone: Drone
+        for drone in drones:
+            # Compute the correct neighbor list
+            correct_neighbor_list = {neighbor for neighbor in drones if utilities.euclidean_distance(drone.coords, neighbor.coords) <= drone.communication_range and drone != neighbor}
+            # Retrieve the neighbor list computed in the discovery phase
+            discovery_neighbor_list = set(drone.neighbor_table.get_drones())
+            printer.print_debug_colored(211, 3, 252, f"Real neighbors: {correct_neighbor_list}, discovered: {discovery_neighbor_list}")

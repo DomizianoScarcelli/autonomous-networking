@@ -220,6 +220,7 @@ class Simulator:
             self.depot.start_discovery()
 
             self.tester.check_drone_neighbors()
+
             for drone in self.drones:
                 # 1. update expired packets on drone buffers
                 # 2. try routing packets vs other drones or depot
