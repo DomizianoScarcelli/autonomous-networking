@@ -1,7 +1,7 @@
 from src.drawing import pp_draw
 from src.entities.uav_entities import *
 from src.simulation.metrics import Metrics
-from src.utilities import config, utilities
+from src.utilities import config, utilities, printer
 from src.routing_algorithms.net_routing import MediumDispatcher
 from collections import defaultdict
 from tqdm import tqdm
@@ -231,10 +231,7 @@ class Simulator:
                 self.__plot(cur_step)
             
 
-            #TODO: DEBUGGING FOR HOP COUNT #####################################
-            for drone in [self.drones[id] for id in self.depot.nodes_table.nodes_list.keys()]:
-                print(f"{drone} is in the neighborhood with {drone.hop_from_depot}")
-            ####################################################################
+            
 
             #TODO: DEBUGGING TESTS
             #####################################################################
@@ -265,16 +262,20 @@ class Simulator:
 
             # self.metrics.sent_acks = {}
 
-            #TODO: (Debug) ##############################################
-            if len(self.depot.nodes_table.nodes_list) != 0:
-                print(f"Depot neighbors: {self.depot.nodes_table.nodes_list}")
-            # else: print("Depot has no neighbors")
-            ############################################################
-
+            #TODO: DEBUGGING FOR HOP COUNT #####################################
+            # for drone in [self.drones[id] for id in self.depot.nodes_table.nodes_list.keys()]: 
+            for drone in [self.drones[id] for id in self.depot.nodes_table.nodes_list.keys() if utilities.euclidean_distance(self.drones[id].coords, self.depot.coords) <= self.depot.communication_range]:
+                if drone.hop_from_depot > 1:
+                    print(printer.colored(200, 0, 0, f"{drone} is in the neighborhood of the depot with hop count {drone.hop_from_depot}"))
+            # if len(self.depot.nodes_table.nodes_list) != 0:
+            #     hop_counts = [node_info.hop_count > 1 for node_info in self.depot.nodes_table.nodes_list.values()]
+            #     if any(hop_counts):
+            #         print(f"Depot neighbors: {self.depot.nodes_table.nodes_list}")
+            ####################################################################
+        
+            print(printer.colored(197, 227, 152, "--------------------------------------------------------------------------------"))
             drone: Drone
             for drone in self.drones:
-                # if drone.neighbor_table.neighbors_list != {}:
-                #     print(f"Neighbors of {drone}: {drone.neighbor_table.neighbors_list}")
                 drone.reset_discovery_state()
             
         
