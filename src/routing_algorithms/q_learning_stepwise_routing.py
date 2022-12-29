@@ -19,7 +19,7 @@ class QlearningStepwiseRouting(BASE_routing):
 
         self.random = np.random.RandomState(self.simulator.seed) #it generates a random value to be used in epsilon greedy
         self.link_qualities = {} #In order to calculate it, we should considered the packet transmission time and packet delivery ratio but we made a simplification considering only the distance between two drones.
-        self.q_table = {} #{drone_1: [drone_1, drone_2, ..., drone_n], .., drone_n: [drone_1, drone_2, ..., drone_n]}
+        self.q_table = self.instantiate_qtable() #{drone_1: [drone_1, drone_2, ..., drone_n], .., drone_n: [drone_1, drone_2, ..., drone_n]}
         self.link_stability = {}
         self.old_state = None
 
@@ -69,7 +69,6 @@ class QlearningStepwiseRouting(BASE_routing):
         @return: The best drone to use as relay
         """
         
-        self.check_state(self.drone.identifier)
         self.update_link_quality() #WORKS GOOD BUT NEED OPTIMIZATION!
         #print(self.link_qualities)
         drones_speed = self.compute_nodes_speed(self.drone, self.simulator.drones)
@@ -89,17 +88,15 @@ class QlearningStepwiseRouting(BASE_routing):
             return best_neighbor[0]
 
     #Check if the state exists in the QTable, otherwise it adds it
-    def check_state(self, state):
-        if not state in self.q_table:
-            self.q_table[state] = [0 for _ in range(self.simulator.n_drones+1)]
-
+    def instantiate_qtable(self):
+        qtable = {}
+        for drone_index in range(self.simulator.n_drones):
+            qtable[drone_index] = [0 for _ in range(self.simulator.n_drones+1)]
+        return qtable
 
     #Update the qtable
     def update_qtable(self, state, next_state, action, reward):
-        self.check_state(state) #Add state to qtable if it doesn't exist
-        self.check_state(next_state) #Add next_state to qtable if it doesn't exist
         self.q_table[state][action] = (1-self.LEARNING_RATE)*self.q_table[state][action] + self.LEARNING_RATE*(reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state])))
-
 
     #Save the link quality of the drone at current step. Only the last n link qualities are saved (where n is the number of drones in the simulator)
     def update_link_quality(self):
