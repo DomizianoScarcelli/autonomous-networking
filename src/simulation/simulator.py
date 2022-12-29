@@ -219,8 +219,6 @@ class Simulator:
                 # 1. update expired packets on drone buffers
                 # 2. try routing packets vs other drones or depot
                 # 3. actually move the drone towards next waypoint or depot
-
-                drone.reset_discovery_info()
                 drone.update_packets(cur_step)
                 drone.routing(self.drones, self.depot, cur_step)
                 drone.move(self.time_step_duration)
@@ -231,6 +229,12 @@ class Simulator:
 
             if self.show_plot or config.SAVE_PLOT:
                 self.__plot(cur_step)
+            
+
+            #TODO: DEBUGGING FOR HOP COUNT #####################################
+            for drone in [self.drones[id] for id in self.depot.nodes_table.nodes_list.keys()]:
+                print(f"{drone} is in the neighborhood with {drone.hop_from_depot}")
+            ####################################################################
 
             #TODO: DEBUGGING TESTS
             #####################################################################
