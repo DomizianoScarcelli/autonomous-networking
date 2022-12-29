@@ -3,8 +3,10 @@ from src.entities.uav_entities import *
 from src.simulation.metrics import Metrics
 from src.utilities import config, utilities, printer
 from src.routing_algorithms.net_routing import MediumDispatcher
+from src.utilities.tester import Tester
 from collections import defaultdict
 from tqdm import tqdm
+
 
 import numpy as np
 import math
@@ -95,6 +97,8 @@ class Simulator:
 
         self.start = time.time()
         self.event_generator = utilities.EventGenerator(self)
+
+        self.tester = Tester(self)
 
     def __setup_net_dispatcher(self):
         self.network_dispatcher = MediumDispatcher(self.metrics)
@@ -230,50 +234,9 @@ class Simulator:
             if self.show_plot or config.SAVE_PLOT:
                 self.__plot(cur_step)
             
-
-            
-
-            #TODO: DEBUGGING TESTS
-            #####################################################################
-            #TODO: Lost acks debug
-            # def check_if_lost_ack(drone):
-            #     if drone.identifier in self.metrics.sent_acks:
-            #         acks_received = self.metrics.sent_acks[drone.identifier]
-            #         neighbor_table = drone.neighbor_table.get_drones()
-            #         lost_drones = set(acks_received).difference(neighbor_table)
-            #         return lost_drones
-            #     return set()
-            
-            # def check_if_lost_ack_depot():
-            #     if self.depot.identifier in self.metrics.sent_acks:
-            #         acks_received = self.metrics.sent_acks[self.depot.identifier]
-            #         neighbor_table = set(self.depot.nodes_table.nodes_list.keys())
-            #         lost_drones = {drone.identifier for drone in acks_received}.difference(neighbor_table)
-            #         return lost_drones
-            #     return set()
-            
-            # for drone in self.drones:
-            #     lost_drones = check_if_lost_ack(drone)
-            #     if lost_drones != set():
-            #         print(f"Lost drones: {lost_drones}")
-            # depot_lost_drones = check_if_lost_ack_depot()
-            # if depot_lost_drones != set():
-            #     print(f"Depot lost drones: {depot_lost_drones}")
-
-            # self.metrics.sent_acks = {}
-
-            #TODO: DEBUGGING FOR HOP COUNT #####################################
-            # for drone in [self.drones[id] for id in self.depot.nodes_table.nodes_list.keys()]: 
-            for drone in [self.drones[id] for id in self.depot.nodes_table.nodes_list.keys() if utilities.euclidean_distance(self.drones[id].coords, self.depot.coords) <= self.depot.communication_range]:
-                if drone.hop_from_depot > 1:
-                    print(printer.colored(200, 0, 0, f"{drone} is in the neighborhood of the depot with hop count {drone.hop_from_depot}"))
-            # if len(self.depot.nodes_table.nodes_list) != 0:
-            #     hop_counts = [node_info.hop_count > 1 for node_info in self.depot.nodes_table.nodes_list.values()]
-            #     if any(hop_counts):
-            #         print(f"Depot neighbors: {self.depot.nodes_table.nodes_list}")
-            ####################################################################
+            self.tester.hop_count_test()
         
-            print(printer.colored(197, 227, 152, "--------------------------------------------------------------------------------"))
+            printer.print_debug_colored(197, 227, 152, "--------------------------------------------------------------------------------")
             drone: Drone
             for drone in self.drones:
                 drone.reset_discovery_state()

@@ -358,7 +358,7 @@ class Drone(Entity):
     
     def set_hop_from_depot(self, new_hop, message=""):
         if new_hop is not None:
-            print(printer.colored(252, 194, 3, f"Hop for {self} changed from {self.hop_from_depot} to {new_hop} because of {message}"))
+            printer.print_debug_colored(252, 194, 3, f"Hop for {self} changed from {self.hop_from_depot} to {new_hop} because of {message}")
         self.hop_from_depot = new_hop
 
     def initialize_discovery(self):
@@ -413,9 +413,9 @@ class Drone(Entity):
         """
         # if self.identifier in self.simulator.depot.nodes_table.nodes_list:
         # if self in [self.simulator.drones[id] for id in self.simulator.depot.nodes_table.nodes_list.keys() if utilities.euclidean_distance(self.simulator.drones[id].coords, self.depot.coords) <= self.depot.communication_range]:
-        print(printer.colored(0, 200, 0, f"Updating {self} from {new_parent}, new hop count: {new_hop_count}, old hop count: {self.hop_from_depot}"))
+        printer.print_debug_colored(0, 200, 0, f"Updating {self} from {new_parent}, new hop count: {new_hop_count}, old hop count: {self.hop_from_depot}")
         self.set_hop_from_depot(new_hop_count, message=f"Updating newer hop count from {new_parent}")
-        print(printer.colored(0, 0, 200, f"Finish updating {self} from {new_parent}, new hop count: {self.hop_from_depot}"))
+        printer.print_debug_colored(0, 0, 200, f"Finish updating {self} from {new_parent}, new hop count: {self.hop_from_depot}")
 
         childs = self.get_childs()
         child: Drone
@@ -452,11 +452,7 @@ class Drone(Entity):
             
 
     def send_ack_unicast(self, ack_packet: AckDiscoveryPacket, parent_node: Drone | Depot):
-        # # TODO: debug #############
-        # if ack_packet.sender_id not in self.simulator.metrics.sent_acks:
-        #     self.simulator.metrics.sent_acks[parent_node.identifier] = []
-        # self.simulator.metrics.sent_acks[parent_node.identifier] += [self]
-        # #############
+        self.simulator.tester.add_ack(ack_packet, parent_node)
         parent_node.update_nodes_table_by_ack(ack_packet)
     
     def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable):
