@@ -16,11 +16,17 @@ class Tester():
     # Debugging for lost acks
     ##########################################################################      
     def add_ack(self, ack_packet: AckDiscoveryPacket, parent_node: Drone | Depot):
+        """
+        Adds an ack to the dictionary of ack sent
+        """
         if ack_packet.sender_id not in self.simulator.metrics.sent_acks:
             self.simulator.metrics.sent_acks[parent_node.identifier] = []
         self.simulator.metrics.sent_acks[parent_node.identifier] += [self]
 
     def check_if_lost_ack(self, drone: Drone):
+        """
+        Checks if there is an ack that is sent but never received
+        """
         if drone.identifier in self.simulator.metrics.sent_acks:
             acks_received = self.simulator.metrics.sent_acks[drone.identifier]
             neighbor_table = drone.neighbor_table.get_drones()
