@@ -219,9 +219,10 @@ class Simulator:
             # Start node discovery
             self.depot.start_discovery()
 
-            #TODO: Discovery Tests ######################
+            #TODO: Discovery Tests, to remove in final version ######################
             self.tester.check_drone_neighbors() 
             self.tester.check_depot_discovery()
+            self.tester.check_depot_information()
             #############################################
 
             for drone in self.drones:

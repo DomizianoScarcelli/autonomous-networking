@@ -139,10 +139,24 @@ class Tester():
         """
 
     def check_depot_information(self):
+        from src.entities.uav_entities import NodeInfo, NodesTable #Just in time import in order to avoid circular imports
         """
         Check if the information about the drones that can reach the depot is up-to-date inside the depot's node table.
         """
-        pass
+        correct_depot_discovery = {drone.identifier for drone in self.simulator.depot.get_chain()}
+        correct_information = NodesTable()
+
+        for drone_id in correct_depot_discovery:
+            drone: Drone = self.simulator.drones[drone_id]
+            node_info = NodeInfo(drone_id, drone.speed, drone.coords, drone.hop_from_depot)
+            correct_information.add_node(node_info)
+        
+        computed_information = self.simulator.depot.nodes_table
+        assert correct_information == computed_information, f"""
+        Information inside the depot's node table is not correct, or not up-to-date.
+        Computed: {computed_information}
+        Correct: {correct_information}
+        """
     
     def print_real_computed_neighbors(self):
         """
@@ -155,13 +169,5 @@ class Tester():
             correct_neighbor_list = {neighbor for neighbor in drones if utilities.euclidean_distance(drone.coords, neighbor.coords) <= drone.communication_range and drone != neighbor}
             # Retrieve the neighbor list computed in the discovery phase
             discovery_neighbor_list = set(drone.neighbor_table.get_drones())
-
-            #TODO: DEBUG: this is needed to bypass the fact that the node is in its neighbor list
-            if drone in discovery_neighbor_list:
-                discovery_neighbor_list.remove(drone)
-                
-            #TODO: DEBUG: this is needed to bypass the fact that the depot is in the drone neighbor list
-            if self.simulator.depot in discovery_neighbor_list:
-                discovery_neighbor_list.remove(self.simulator.depot)
 
             printer.print_debug_colored(211, 3, 252, f"Real neighbors: {correct_neighbor_list}, discovered: {discovery_neighbor_list}")

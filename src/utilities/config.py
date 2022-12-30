@@ -36,7 +36,7 @@ RANDOM_START_POINT = True  # bool whether the drones start the mission at random
 
 # ------------------------------- CONSTANTS ------------------------------- #
 
-TESTER_DEBUG = True                 # bool: whether to print Tester error-related and debug strings or not.
+TESTER_DEBUG = False                 # bool: whether to print Tester error-related and debug strings or not.
 DEBUG = False                       # bool: whether to print debug strings or not.
 EXPERIMENTS_DIR = "data/evaluation_tests/"  # output data : the results of the simulation
 
