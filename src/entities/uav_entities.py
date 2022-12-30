@@ -228,6 +228,7 @@ class NodeInfo():
     
     def __hash__(self) -> int:
         return hash((self.self_id, self.self_moving_speed, self.self_location, self.hop_count))
+
 class NodesTable():
     def __init__(self):
         self.nodes_list = {}
@@ -252,9 +253,6 @@ class NodesTable():
     def __eq__(self, __o: object) -> bool:
         return self.nodes_list == __o.nodes_list
 
-
-
-
 class NeighborTable():
     def __init__(self, simulator: Simulator, drone: Drone):
         self.drone = drone
@@ -276,7 +274,6 @@ class NeighborTable():
                     self.neighbors_list[node.self_id] = node
                     if log:
                         self.simulator.tester.print_neighborhood_flow(self.drone, node.self_id)
-
     
     def generate_update(self, new_neighbor_table: NeighborTable):
         result = NeighborTable(self.simulator, self.drone)
