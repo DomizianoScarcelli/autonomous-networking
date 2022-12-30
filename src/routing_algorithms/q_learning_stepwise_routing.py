@@ -53,21 +53,23 @@ class QlearningStepwiseRouting(BASE_routing):
         drones_speed = self.compute_nodes_speed(self.drone, self.simulator.drones) #Compute the speed at which two nodes move away (YET TO IMPLEMENT - probabilmente va inserita nel ciclo for più in basso)
         link_quality_sum = {} #Stores the sum of link qualities in the last n steps (n is the number of drones) between the current drone and the neighbors
 
-        for drone in opt_neighbors:
-            drone = drone[-1]
-            link_quality_sum[drone.identifier] = self.sum_n_last_link_qualities(drone)
-            self.link_stability[drone.identifier] = (1-self.BETA)*np.exp(1/drones_speed[drone.identifier])+self.BETA*(link_quality_sum[drone.identifier]/len(self.simulator.drones))
+        for neighbor in self.drone.neighbor_table.neighbors_list:
+            neighbor = self.simulator.drones[neighbor]
+            link_quality_sum[neighbor.identifier] = self.sum_n_last_link_qualities(neighbor) #Sum the last n link qualities between self and the neighbor (n is the number of drones)
+            self.link_stability[neighbor.identifier] = (1-self.BETA)*np.exp(1/drones_speed[neighbor.identifier])+self.BETA*(link_quality_sum[neighbor.identifier]/self.simulator.n_drones) #Computes the link stability between self and the neighbor
 
         self.old_state = self.drone
-        if len(opt_neighbors) == 0:
+        if len(self.drone.neighbor_table.neighbors_list) == 0: #If there are no neighbors, keep the packets
             return self.drone
-        else:
-            #TO CHECK AGAIN (maybe it is possible to make it "lighter")
-            best_neighbor = (None, None) # (Drone, QValue)
-            for neighbor in opt_neighbors:
-                if  best_neighbor[0] == None or self.q_table[self.drone.identifier][neighbor[-1].identifier] > best_neighbor[1]:
-                    best_neighbor = (neighbor[-1], self.q_table[self.drone.identifier][neighbor[-1].identifier])
-            return best_neighbor[0]
+        else: #Otherwise, choose the action (the neighbor) with the highest QValue
+            best_qvalue = None
+            best_neighbor = None
+            for neighbor in self.drone.neighbor_table.neighbors_list:
+                neighbor = self.simulator.drones[neighbor]
+                if  best_neighbor == None or self.q_table[self.drone.identifier][neighbor.identifier] > best_qvalue:
+                    best_neighbor = neighbor
+                    best_qvalue = self.q_table[self.drone.identifier][neighbor.identifier]
+            return best_neighbor
 
     #Create the QTable
     def instantiate_qtable(self):
