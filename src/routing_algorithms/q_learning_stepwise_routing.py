@@ -83,7 +83,7 @@ class QlearningStepwiseRouting(BASE_routing):
     #Update the qtable
     def update_qtable(self, state, next_state, action, reward):
         #Update the reward function with the same formula used on the paper
-        self.q_table[state][action] = (1-self.LEARNING_RATE)*self.q_table[state][action] + self.LEARNING_RATE*(reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state])))
+        self.q_table[state][action] += (1-self.LEARNING_RATE)*self.q_table[state][action] + self.LEARNING_RATE*(reward + (self.DISCOUNT_FACTOR * max(self.q_table[next_state])))
 
     #Save the link quality of the drone at current step. Only the last n link qualities are saved (where n is the number of drones in the simulator)
     def update_link_quality(self):
