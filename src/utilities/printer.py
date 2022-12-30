@@ -1,5 +1,5 @@
-DEBUG = True
-OUT = True
+DEBUG = False
+OUT = False
 
 def colored(r, g, b, text):
     if OUT: return text

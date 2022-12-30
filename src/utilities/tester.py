@@ -80,11 +80,11 @@ class Tester():
         """
         printer.print_debug_colored(text=f"{receiver} has received a discovery packet from {sender} at {self.simulator.cur_step}, they're distant {utilities.euclidean_distance(sender.coords, receiver.coords)}")
 
-    def print_neighborhood_flow(self, main: Drone, entry: Drone):
+    def print_neighborhood_flow(self, main: Drone, entry: str):
         """
         Prints out the adding ot "entry" Drone in the neighborhoo of "main"
         """
-        printer.print_debug_colored(text=f"{main} has added {entry} in their neighborhood, now it's composed from: {main.neighbor_table.get_drones()} at {self.simulator.cur_step}, they're distant {utilities.euclidean_distance(main.coords, entry.coords)}")
+        printer.print_debug_colored(text=f"{main} has added Drone {entry} in their neighborhood, now it's composed from: {main.neighbor_table.get_drones()} at {self.simulator.cur_step}, they're distant {utilities.euclidean_distance(main.coords, self.simulator.drones[entry].coords)}")
 
 
     # Debugging for discovery correctness
@@ -99,23 +99,33 @@ class Tester():
             correct_neighbor_list = {neighbor for neighbor in drones if utilities.euclidean_distance(drone.coords, neighbor.coords) <= drone.communication_range and drone != neighbor}
             # Retrieve the neighbor list computed in the discovery phase
             discovery_neighbor_list = set(drone.neighbor_table.get_drones())
+            
             # #TODO: DEBUG: this is needed to bypass the fact that the parent node is not in the neighbor list right now
             # if drone.parent_node is not None:
             #     discovery_neighbor_list.add(drone.parent_node)
+
             # #TODO: DEBUG: this is needed to bypass the fact that the node is in its neighbor list
             # if drone in discovery_neighbor_list:
             #     discovery_neighbor_list.remove(drone)
+
             # #TODO: DEBUG: this is needed to bypass the fact that the depot is in the drone neighbor list
             # if self.simulator.depot in discovery_neighbor_list:
             #     discovery_neighbor_list.remove(self.simulator.depot)
+
             assert discovery_neighbor_list == correct_neighbor_list, f"""
 
-            Discovery phase neighbors are not correct for {drone}. Computed: {discovery_neighbor_list}, correct: {correct_neighbor_list}
-            Drone raw neighbor list: {drone.neighbor_table}
-            Distance from each drone (communication range: {drone.communication_range}):
-            {[(neighbor, utilities.euclidean_distance(drone.coords, neighbor.coords)) for neighbor in discovery_neighbor_list.union(correct_neighbor_list)]}
-            Parent node: {drone.parent_node}
-            """
+                Discovery phase neighbors are not correct for {drone}. Computed: {discovery_neighbor_list}, correct: {correct_neighbor_list}
+                Drone raw neighbor list: {drone.neighbor_table}
+                Distance from each drone (communication range: {drone.communication_range}):
+                {[(neighbor, utilities.euclidean_distance(drone.coords, neighbor.coords)) for neighbor in discovery_neighbor_list.union(correct_neighbor_list)]}
+                Parent node: {drone.parent_node}
+                """
+    
+    def check_depot_discovery(self):
+        """
+        Check if the drones that are connected to the depots are computed correctly
+        """
+        pass
     
     def print_real_computed_neighbors(self):
         """
@@ -128,4 +138,13 @@ class Tester():
             correct_neighbor_list = {neighbor for neighbor in drones if utilities.euclidean_distance(drone.coords, neighbor.coords) <= drone.communication_range and drone != neighbor}
             # Retrieve the neighbor list computed in the discovery phase
             discovery_neighbor_list = set(drone.neighbor_table.get_drones())
+
+            #TODO: DEBUG: this is needed to bypass the fact that the node is in its neighbor list
+            if drone in discovery_neighbor_list:
+                discovery_neighbor_list.remove(drone)
+                
+            #TODO: DEBUG: this is needed to bypass the fact that the depot is in the drone neighbor list
+            if self.simulator.depot in discovery_neighbor_list:
+                discovery_neighbor_list.remove(self.simulator.depot)
+
             printer.print_debug_colored(211, 3, 252, f"Real neighbors: {correct_neighbor_list}, discovered: {discovery_neighbor_list}")
