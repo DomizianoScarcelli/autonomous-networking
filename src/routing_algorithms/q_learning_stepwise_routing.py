@@ -11,44 +11,46 @@ class QlearningStepwiseRouting(BASE_routing):
         BASE_routing.__init__(self, drone, simulator)
         self.LEARNING_RATE = 0.8 #Learning rate
         self.DISCOUNT_FACTOR = 0.1 #Discount factor (it represents the importance of future rewards)
-        self.BETA = 0.1 #Coefficient weight value (to change!)
+        self.BETA = 0.8 #Coefficient weight value (to change!)
         self.OMEGA = 0.1 #Used in the reward function (to change!)
         self.RMAX = 2 #Maximum reward value
         self.RMIN = 0 #Minimum reward value
 
         self.random = np.random.RandomState(self.simulator.seed) #it generates a random value to be used in epsilon greedy
         self.link_qualities = {} #In order to calculate it, we should considered the packet transmission time and packet delivery ratio but we made a simplification considering only the distance between two drones.
-        self.q_table = self.instantiate_qtable() #{drone_1: [drone_1, drone_2, ..., drone_n], .., drone_n: [drone_1, drone_2, ..., drone_n]}
-        self.link_stability = {}
+        self.q_table = self.instantiate_table() #{drone_1: [drone_1, drone_2, ..., drone_n], .., drone_n: [drone_1, drone_2, ..., drone_n]}
+        self.link_stability = self.instantiate_table()
         self.old_state = None
 
-    #Function which is called at each step and it is used to compute the reward for each drone. After a reward has been chosen, another function is called to update the qtable.
-    def compute_reward(self, drone):
+    #Function which is called at each step and it is used to compute the reward for each drone. After a reward has been chosen, another function is called to update the qtable accordingly.
+    def compute_reward(self, old_action):
+        #print(self.link_stability)
         reward = None
-        distance_cur_drone_depot = util.euclidean_distance(drone.coords, self.simulator.depot.coords)
-        distance_old_drone_depot = util.euclidean_distance(drone.coords, self.simulator.depot.coords)
-        # If the drone is in the communication range of the depot and it has packets to deliver, then we give maximum reward
-        if distance_cur_drone_depot and drone.buffer_length() != 0 <= config.DEPOT_COMMUNICATION_RANGE:
+        distance_cur_drone_depot = util.euclidean_distance(self.drone.coords, self.simulator.depot.coords)
+        distance_old_drone_depot = util.euclidean_distance(old_action.coords, self.simulator.depot.coords)
+        # If the drone is in the communication range of the depot, then we give maximum reward
+        if distance_cur_drone_depot <= config.DEPOT_COMMUNICATION_RANGE:
             reward = self.RMAX
         elif distance_old_drone_depot > distance_cur_drone_depot: #if the drone chosen as the best action moves even further away from the depot, then we give minimum reward 
             reward = self.RMIN
-        else: 
-            if drone.identifier in self.simulator.depot.nodes_table.nodes_list: #In this case the drone is linked with the depot and hop != None
-                hop = self.simulator.depot.nodes_table.nodes_list[drone.identifier].hop_count
-                if drone.identifier in self.link_stability:
-                    reward = self.OMEGA*np.exp(1/hop) + (1-self.OMEGA)*self.link_stability[drone.identifier] #<----TO CHECK!
+        else:
+            #Otherwise (if the drone, the chosen action, is moving towards the depot but it is not in its communication range)
+            if self.drone.identifier in self.simulator.depot.nodes_table.nodes_list: #In this case the drone is linked with the depot and hop != None
+                hop = self.simulator.depot.nodes_table.nodes_list[self.drone.identifier].hop_count
+                if self.drone.identifier in self.link_stability.keys():
+                    reward = self.OMEGA*np.exp(1/hop) + (1-self.OMEGA)*self.link_stability[old_action.identifier][self.drone.identifier]
                     if reward > self.RMAX:
                         self.RMAX = reward
                     if reward < self.RMIN:
                         self.RMIX = reward
             else:
-                if drone.identifier in self.link_stability:
-                    reward = self.link_stability[drone.identifier]
+                if self.drone.identifier in self.link_stability.keys():
+                    reward = self.link_stability[old_action.identifier][self.drone.identifier]
         if self.old_state != None and reward != None:
             self.update_qtable(self.old_state.identifier, self.drone.identifier, self.drone.identifier, reward)
     
     #This function returns the best relay to send packets
-    def relay_selection(self, opt_neighbors: list, packet): 
+    def relay_selection(self): 
         self.update_link_quality() #Compute the link qualities based on the distance between the current drone and the others and save them to self.link_qualities dictionary
         drones_speed = self.compute_nodes_speed(self.drone, self.simulator.drones) #Compute the speed at which two nodes move away (YET TO IMPLEMENT - probabilmente va inserita nel ciclo for più in basso)
         link_quality_sum = {} #Stores the sum of link qualities in the last n steps (n is the number of drones) between the current drone and the neighbors
@@ -56,7 +58,9 @@ class QlearningStepwiseRouting(BASE_routing):
         for neighbor in self.drone.neighbor_table.neighbors_list:
             neighbor = self.simulator.drones[neighbor]
             link_quality_sum[neighbor.identifier] = self.sum_n_last_link_qualities(neighbor) #Sum the last n link qualities between self and the neighbor (n is the number of drones)
-            self.link_stability[neighbor.identifier] = (1-self.BETA)*np.exp(1/drones_speed[neighbor.identifier])+self.BETA*(link_quality_sum[neighbor.identifier]/self.simulator.n_drones) #Computes the link stability between self and the neighbor
+            link_stability_ij = (1-self.BETA)*np.exp(1/drones_speed[neighbor.identifier])+self.BETA*(link_quality_sum[neighbor.identifier]/self.simulator.n_drones) #Computes the link stability between self and the neighbor
+            self.link_stability[self.drone.identifier][neighbor.identifier] = link_stability_ij
+            self.link_stability[neighbor.identifier][self.drone.identifier]= link_stability_ij
 
         self.old_state = self.drone
         if len(self.drone.neighbor_table.neighbors_list) == 0: #If there are no neighbors, keep the packets
@@ -72,11 +76,11 @@ class QlearningStepwiseRouting(BASE_routing):
             return best_neighbor
 
     #Create the QTable
-    def instantiate_qtable(self):
-        qtable = {}
+    def instantiate_table(self):
+        table = {}
         for drone_index in range(self.simulator.n_drones):
-            qtable[drone_index] = [0 for _ in range(self.simulator.n_drones+1)]
-        return qtable
+            table[drone_index] = [0 for _ in range(self.simulator.n_drones+1)]
+        return table
 
     #Update the qtable
     def update_qtable(self, state, next_state, action, reward):

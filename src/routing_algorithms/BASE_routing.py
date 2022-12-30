@@ -22,7 +22,7 @@ class BASE_routing(metaclass=abc.ABCMeta):
         self.no_transmission = False
 
     @abc.abstractmethod
-    def relay_selection(self, geo_neighbors, packet):
+    def relay_selection(self):
         pass
 
     def routing_close(self):
@@ -75,9 +75,11 @@ class BASE_routing(metaclass=abc.ABCMeta):
     def send_packets(self, cur_step):
         """ procedure 3 -> choice next hop and try to send it the data packet """
 
+        """
         # FLOW 0
         if self.no_transmission or self.drone.buffer_length() == 0:
             return
+        """
 
         # FLOW 1
         if util.euclidean_distance(self.simulator.depot.coords, self.drone.coords) <= self.simulator.depot_com_range:
@@ -89,7 +91,7 @@ class BASE_routing(metaclass=abc.ABCMeta):
             return
 
 
-
+        
         if cur_step % self.simulator.drone_retransmission_delta == 0:
 
             opt_neighbors = []
@@ -123,7 +125,7 @@ class BASE_routing(metaclass=abc.ABCMeta):
 
                 self.simulator.metrics.mean_numbers_of_possible_relays.append(len(opt_neighbors))
 
-                best_neighbor = self.relay_selection(opt_neighbors, pkd)  # compute score
+                best_neighbor = self.relay_selection()  # compute score
 
                 if best_neighbor is not None:
 

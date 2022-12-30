@@ -661,6 +661,7 @@ class Drone(Entity):
                                                          pck.event_ref.identifier,
                                                          self.simulator.event_duration,
                                                          feedback)
+
         self.__buffer = tmp_buffer
 
         if self.buffer_length() == 0:
