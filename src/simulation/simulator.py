@@ -219,7 +219,10 @@ class Simulator:
             # Start node discovery
             self.depot.start_discovery()
 
-            self.tester.check_drone_neighbors() #TODO: Tester
+            #TODO: Discovery Tests ######################
+            self.tester.check_drone_neighbors() 
+            self.tester.check_depot_discovery()
+            #############################################
 
             for drone in self.drones:
                 # 1. update expired packets on drone buffers

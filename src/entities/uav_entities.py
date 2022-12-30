@@ -307,7 +307,26 @@ class Depot(Entity):
             pck.time_delivery = cur_step
     
     def get_childs(self):
-        return [drone for drone in self.simulator.drones if drone.parent_node == self]
+        return [drone for drone in self.simulator.drones if drone.parent_node == self]\
+    
+    def has_childs(self):
+        return len(self.get_childs()) != 0
+    
+    def get_chain(self):
+        """
+        Gets the chain of reachable drones from itself
+        """
+        chain = set()
+        def get_chain_rec(entity: Drone|Depot):
+            nonlocal chain
+            if not entity.has_childs():
+                return
+            chain = chain.union(set(entity.get_childs()))
+            child: Drone
+            for child in entity.get_childs():
+                get_chain_rec(child)
+        get_chain_rec(self)
+        return chain
     
     def start_discovery(self):
         self.nodes_table = NodesTable()
@@ -317,7 +336,9 @@ class Depot(Entity):
             if drone_distance_to_depot <= self.communication_range: #The drone is in the neighborhood of the depot
                 discovery_packet = DiscoveryPacket(self, self.simulator)
                 drone.nodes_discovery(discovery_packet) #Initialize the discovery process, setting the depot as the parent
-            elif drone_distance_to_depot <= self.simulator.depot_control_com_range: #The drone is in the range of the depot control packet range
+        for drone in self.simulator.drones:
+            drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
+            if drone_distance_to_depot <= self.simulator.depot_control_com_range: #The drone is in the range of the depot control packet range
                 drone.initialize_discovery() #Initialize the discovery without setting the depot as the parent
 
     def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):

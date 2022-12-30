@@ -5,6 +5,9 @@ if TYPE_CHECKING:
     from src.entities.uav_entities import Depot, Drone, AckDiscoveryPacket
 from src.utilities import utilities
 from src.utilities import printer
+import sys
+
+REDICRECT_STDOUT = not sys.stdout.isatty()
 
 class Tester():
     def __init__(self, simulator):
@@ -123,7 +126,21 @@ class Tester():
     
     def check_depot_discovery(self):
         """
-        Check if the drones that are connected to the depots are computed correctly
+        Check if the drones that are connected to the depots are computed correctly.
+        Note that this test doesn't check if the information about the drones that can reach the depot is updated.
+        """
+        computed_depot_discovery = set(self.simulator.depot.nodes_table.nodes_list.keys())
+        correct_depot_discovery = {drone.identifier for drone in self.simulator.depot.get_chain()}
+        assert computed_depot_discovery == correct_depot_discovery, f"""
+        
+            Drone connected to the depot are not computet correctly.
+            Computed: {computed_depot_discovery}, correct: {correct_depot_discovery}
+            Drones in the range of the depot: {[drone for drone in self.simulator.drones if utilities.euclidean_distance(drone.coords, self.simulator.depot.coords) <= self.simulator.depot.communication_range]}
+        """
+
+    def check_depot_information(self):
+        """
+        Check if the information about the drones that can reach the depot is up-to-date inside the depot's node table.
         """
         pass
     
