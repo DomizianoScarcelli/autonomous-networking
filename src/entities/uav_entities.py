@@ -1,6 +1,13 @@
-import numpy as np
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.simulation.simulator import Simulator
+    from src.entities.uav_entities import Drone, Depot
 
-from src.utilities import config, utilities
+import numpy as np
+from src.utilities import config, utilities, printer
+
+
 
 
 class SimulatedEntity:
@@ -9,7 +16,7 @@ class SimulatedEntity:
     """
 
     def __init__(self, simulator):
-        self.simulator = simulator
+        self.simulator: Simulator = simulator
 
 
 # ------------------ Entities ----------------------
@@ -184,13 +191,14 @@ class HelloPacket(Packet):
         self.src_drone = src_drone  # Don't use this
 
 class DiscoveryPacket(Packet):
-    def __init__(self, entity, simulator):
+    def __init__(self, entity, simulator, hop_count = 1):
         super().__init__(simulator.cur_step, simulator, None)
         self.entity = entity
-        self.hop_count = 1
+        self.hop_count = hop_count
     
-    def update_hop_count(self):
-        self.hop_count += 1
+    def __repr__(self):
+        return f"Sender: {self.entity}, hop_count: {self.hop_count}"
+
 
 class AckDiscoveryPacket(Packet): 
     def __init__(self, sender_id, self_id, self_moving_speed, self_location, hop_count, simulator):
@@ -208,29 +216,81 @@ class NodeInfo():
         self.self_moving_speed = self_moving_speed
         self.self_location = self_location
         self.hop_count = hop_count
+    
+    def __repr__(self) -> str:
+        return f"Self: {self.self_id}, moving speed: {self.self_moving_speed}, location: {self.self_location}, hop count: {self.hop_count}"
 
+    def __eq__(self, __o: NodeInfo) -> bool:
+        return self.self_id == __o.self_id \
+                and self.self_moving_speed == __o.self_moving_speed \
+                and self.self_location == __o.self_location \
+                and self.hop_count == __o.hop_count
+    
+    def __hash__(self) -> int:
+        return hash((self.self_id, self.self_moving_speed, self.self_location, self.hop_count))
 class NodesTable():
     def __init__(self):
         self.nodes_list = {}
-    
+        
     def __repr__(self):
-        return str(self.nodes_list)
+        result = ""
+        for key, value in self.nodes_list.items():
+            result += f"{key} : {value} \n" 
+        return result
 
     def add_node(self, node: NodeInfo):
         if node.self_id not in self.nodes_list:
             self.nodes_list[node.self_id] = node
+            printer.print_debug_colored(text=f"Drone {node.self_id} is inserted into the depot NodesTable with hop count {node.hop_count}")
+
+        else:
+            old: NodeInfo = self.nodes_list[node.self_id]
+            if old.hop_count < node.hop_count:
+                self.nodes_list[node.self_id] = node
+                printer.print_debug_colored(text=f"NodesTable hop count for Drone {node.self_id} has changed from {old.hop_count} to {node.hop_count}")
+    
+    def __eq__(self, __o: object) -> bool:
+        return self.nodes_list == __o.nodes_list
+
+
+
 
 class NeighborTable():
-    def __init__(self, simulator):
+    def __init__(self, simulator: Simulator, drone: Drone):
+        self.drone = drone
         self.simulator = simulator
         self.neighbors_list = {}
     
     def __repr__(self):
         return str(self.neighbors_list)
 
-    def add_node(self, node: NodeInfo):
-        if node.self_id not in self.neighbors_list:
+    def add_node(self, node: NodeInfo, log=True):
+        if node.self_id not in self.neighbors_list and node.self_id != self.drone.identifier:
             self.neighbors_list[node.self_id] = node
+            if log:
+                self.simulator.tester.print_neighborhood_flow(self.drone, node.self_id)
+        if node.self_id in self.neighbors_list:
+            old: NodeInfo = self.neighbors_list[node.self_id]
+            if node.hop_count is not None and old.hop_count is not None:
+                if old.hop_count < node.hop_count:
+                    self.neighbors_list[node.self_id] = node
+                    if log:
+                        self.simulator.tester.print_neighborhood_flow(self.drone, node.self_id)
+
+    
+    def generate_update(self, new_neighbor_table: NeighborTable):
+        result = NeighborTable(self.simulator, self.drone)
+        for node_info in new_neighbor_table.neighbors_list.values():
+            result.add_node(node_info, log=False)
+        for node_info in self.neighbors_list.values():
+            result.add_node(node_info, log=False)
+        return result
+
+    def update_own(self, new_neighbor_table: NeighborTable):
+        node_info: NodeInfo
+        for node_info in new_neighbor_table.neighbors_list.values():
+            if utilities.euclidean_distance(self.simulator.drones[node_info.self_id].coords, self.drone.coords) <= self.drone.communication_range:
+                self.add_node(node_info)
 
     def get_drones(self):
         return [self.simulator.drones[id] for id in self.neighbors_list.keys()]
@@ -275,13 +335,50 @@ class Depot(Entity):
 
             pck.time_delivery = cur_step
     
+    def get_children(self):
+        """
+        Gets the drones that have the depot has a parent
+        """
+        return [drone for drone in self.simulator.drones if drone.parent_node == self]\
+    
+    def has_children(self):
+        """
+        Returns True if the depot has children, False otherwise
+        """
+        return len(self.get_children()) != 0
+    
+    def get_chain(self):
+        """
+        Gets the chain of reachable drones from itself
+        """
+        chain = set()
+        def get_chain_rec(entity: Drone|Depot):
+            nonlocal chain
+            if not entity.has_children():
+                return
+            chain = chain.union(set(entity.get_children()))
+            child: Drone
+            for child in entity.get_children():
+                get_chain_rec(child)
+        get_chain_rec(self)
+        return chain
+    
     def start_discovery(self):
-        self.reset_discovery_info()
-        for drone in self.simulator.drones:
+        """
+        Starts the network discovery.
+        First sends the DiscoveryPacket to all the drones in the communication range;
+        Then sends the signal to start the discovery on their own for the drones that are not in the depot communication range.
+        """
+        self.nodes_table = NodesTable()
+        drone: Drone
+        for drone in self.simulator.drones: #The first for is to send the DiscoveryPacket to the drones in the communication range
             drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
-            if drone_distance_to_depot <= self.simulator.drone_com_range: #The drone is in the neighborhood of the depot
-                drone.nodes_discovery(DiscoveryPacket(self, self.simulator)) #Initialize the discovery process, setting the depot as the parent
-            elif drone_distance_to_depot <= self.simulator.depot_control_com_range: #The drone is in the range of the depot control packet range
+            if drone_distance_to_depot <= self.communication_range: #The drone is in the neighborhood of the depot
+                discovery_packet = DiscoveryPacket(self, self.simulator)
+                drone.nodes_discovery(discovery_packet) #Initialize the discovery process, setting the depot as the parent
+        for drone in self.simulator.drones: #The second fore is to send the signal for the drones not in the communication range to start their own network discovery
+            drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
+            if drone_distance_to_depot <= self.simulator.depot_control_com_range: #The drone is in the range of the depot control packet range
                 drone.initialize_discovery() #Initialize the discovery without setting the depot as the parent
 
     def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
@@ -289,12 +386,11 @@ class Depot(Entity):
         self.nodes_table.add_node(node_info)
 
     def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable):
-        for _, neighbor_info in neighbor_table.neighbors_list.items():
+        neighbor_info: NodeInfo
+        for neighbor_info in neighbor_table.neighbors_list.values():
             node_info = NodeInfo(neighbor_info.self_id, neighbor_info.self_moving_speed, neighbor_info.self_location, neighbor_info.hop_count)
             self.nodes_table.add_node(node_info)
-    
-    def reset_discovery_info(self):
-        self.nodes_table = NodesTable()
+
 
 # ------------------ Drone ----------------------
 class Drone(Entity):
@@ -330,71 +426,204 @@ class Drone(Entity):
         # last mission coord to restore the mission after movement
         self.last_mission_coords = None
 
-        #True if the drone has never received a discovery packet
-        self.discovery_packet_first_received = True
-
         #Neighbor_table
-        self.neighbor_table = NeighborTable(self.simulator) #For discovery of the Multi-UAV nodes information in the neighbor network
+        self.neighbor_table = NeighborTable(self.simulator, self) #For discovery of the Multi-UAV nodes information in the neighbor network
 
-        self.parent_node = None
+        self.parent_node: Drone | Depot = None
+
+        self.hop_from_depot = None
+    
+    def set_hop_from_depot(self, new_hop, message=""):
+        """
+        Change hop count to another hop count.
+        Message: str -- The message that caused the hop change, useful for debug reasons.
+        """
+        self.simulator.tester.print_hop_update(self, new_hop, message)
+        self.hop_from_depot = new_hop
 
     def initialize_discovery(self):
         """
         Send the DiscoveryPacket to the drones in the neighborhood, it's initialized by the Depot.
         """
         neighbors = [drone for drone in self.simulator.drones if utilities.euclidean_distance(self.coords, drone.coords) <= self.communication_range and self != drone] # Calculate the drones in its neighborhood
+        drone: Drone
         for drone in neighbors:
-            discovery_packet = DiscoveryPacket(self, self.simulator)
+            discovery_packet = DiscoveryPacket(self, self.simulator, hop_count=None)
             drone.nodes_discovery(discovery_packet)
-
+ 
     def nodes_discovery(self, discovery_packet: DiscoveryPacket):
+        """
+        Does the network discovery, in order to get the neighbor list and in order to send the depot all the nodes that are connected to it through some chain of drones.
+        """
+
+        def just_consider_it(sender: Drone, receiver: Drone):
+            """
+            When a sender sends the DiscoveryPacket to a receiver, it means that both the drones are in their communication range, so without caring about anything else, they both add each
+            other to their neighbor table. The receiver sends an ack to the sender to let it know that it's in its communication range, and adds the sender to its neighbor table.
+            """
+            receiver.send_ack_unicast(AckDiscoveryPacket(sender.identifier, receiver.identifier, receiver.speed, receiver.coords,discovery_packet.hop_count, receiver.simulator), sender)
+            node_info = NodeInfo(sender.identifier, sender.speed, sender.coords, sender.hop_from_depot)
+            receiver.neighbor_table.add_node(node_info)
+
+        self.simulator.tester.print_send_dp(discovery_packet.entity, self)
+        if discovery_packet.entity != self.simulator.depot:
+            just_consider_it(discovery_packet.entity, self)
         """
         Manage the reception of a DiscoveryPacket if it's the first that the drone receives
         - Sets the parent as the entity that sent it the DiscoveryPacket
-        - Broadcasts the DiscoveryPacket to the drones in its neighborhood
-        """
-        if self.discovery_packet_first_received:
-            #self.discovery_packet_first_received = False
-            #Parent_node = Discovery_packet. Sender_ID
-            self.parent_node: Drone = discovery_packet.entity
-            ## GenerateAck + Unicast(Ack, Parent_node)
-            self.send_ack_unicast(AckDiscoveryPacket(self.parent_node.identifier, self.identifier, self.speed, self.coords, discovery_packet.hop_count+1, self.simulator), self.parent_node)
-            self.parent_node.update_nodes_table_by_neighbor_table(self.neighbor_table)
-            self.discovery_packet_first_received = False
-            # Modify Discovery_packet:
-            discovery_packet.entity = self
-            discovery_packet.update_hop_count()
-            #Broadcast(Discovery_packet)
-            for drone in self.simulator.drones:
-                if drone.identifier not in [self.identifier, self.parent_node.identifier]:
-                    self_distance_to_drone = utilities.euclidean_distance(self.coords, drone.coords)
-                    if self_distance_to_drone <= self.communication_range:
-                        #TODO: test here to see if the drone has already a parent node
-                        drone.nodes_discovery(discovery_packet)
-                self.parent_node.update_nodes_table_by_neighbor_table(self.neighbor_table)
+        - Broadcasts the DiscoveryPacket to the drones in its neighborhood\
 
-    def send_ack_unicast(self, ack_packet: AckDiscoveryPacket, parent_node):
-        # TODO: debug #############
-        if ack_packet.sender_id not in self.simulator.metrics.sent_acks:
-            self.simulator.metrics.sent_acks[parent_node.identifier] = []
-        self.simulator.metrics.sent_acks[parent_node.identifier] += [self]
-        #############
+        If hop_count = None, then the drone is receiving the packet from another Drone that is not linked with the depot
+        If discovery_packet.entity == Depot and hop_count = None, then the Drone it's locally initializing the discovery, because it has received the packet from the Depot with Long Range communication.
+        """
+        if discovery_packet.hop_count is not None and self.parent_node is not None:
+            self.update_parent(new_parent= discovery_packet.entity, new_hop_count= discovery_packet.hop_count)
+            return
+
+        if self.parent_node is not None: #The delivery packet arrives from a drone that's not connected to the Depot, since hop_count = None.
+            return # Ignore it since the drone already has received a DiscoveryPacket from another drone and there is no need to update the hop_count 
+
+        if self.has_children() and discovery_packet.hop_count is None: #This is needed in order to avoid cycles of father and child relationship between blobs of non-connected drones.
+            return # Ignore the packet otherwise the drone will close the loop
+        
+        # #TODO: In theory this should work and the one above should cause a loop, but they both work fine, so since the one above it's more computational efficient I use that one.
+        # I leave this in case it's needed.
+        # if discovery_packet.entity in self.get_chain() and discovery_packet.hop_count is None:
+        #     return 
+
+        self.simulator.tester.print_receive_dp(discovery_packet.entity, self)
+
+        #The code below runs only if self.parent_node is None (it's the first time that the drone has ever received a DiscoveryPacket)
+        self.parent_node = discovery_packet.entity
+
+        # Add the parent node to the neighbor list
+        if self.parent_node != self.simulator.depot:
+            parent_node_info = NodeInfo(self.parent_node.identifier, self.parent_node.speed, self.parent_node.coords, self.parent_node.hop_from_depot)
+            self.neighbor_table.add_node(parent_node_info)
+
+        self.set_hop_from_depot(discovery_packet.hop_count, message=f"First time received a Discovery Packet from {discovery_packet.entity}")
+        ## GenerateAck + Unicast(Ack, Parent_node)
+        ack_packet = AckDiscoveryPacket(self.parent_node.identifier, self.identifier, self.speed, self.coords, discovery_packet.hop_count, self.simulator)
+        self.send_ack_unicast(ack_packet, self.parent_node) #Sends the ack to the parent node
+        self.update_nodes_table_by_neighbor_table(self.neighbor_table) #Updates the parent node's nodes table with the drone's neighbor table
+        # Modify Discovery_packet:
+        new_discovery_packet = DiscoveryPacket(self, self.simulator, self.hop_from_depot)
+        #Broadcast(Discovery_packet)
+
+        drone: Drone #Type hints for auto-completion in for-loop
+        for drone in self.simulator.drones:
+            if drone not in [self, self.parent_node]:
+                self_distance_to_drone = utilities.euclidean_distance(new_discovery_packet.entity.coords, drone.coords)
+                if self_distance_to_drone <= self.communication_range:
+                    drone.nodes_discovery(new_discovery_packet)
+                self.update_nodes_table_by_neighbor_table(self.neighbor_table)
+    
+    def get_children(self):
+        """
+        Gets the node that has self has a parent
+        """
+        return [drone for drone in self.simulator.drones if drone.parent_node == self]
+    
+    def has_children(self):
+        """
+        Returns True if self has children, False otherwise
+        """
+        return len(self.get_children()) != 0
+    
+    def get_chain(self):
+        """
+        Gets the chain of reachable drones from self
+        """
+        chain = set()
+        def get_chain_rec(drone: Drone):
+            nonlocal chain
+            if not drone.has_children():
+                return
+            chain = chain.union(set(drone.get_children()))
+            child: Drone
+            for child in drone.get_children():
+                get_chain_rec(child)
+        get_chain_rec(self)
+        return chain
+    
+    def update_newest_hop_count(self, new_hop_count, new_parent):
+        """
+        Updates the hop count of all the rest of the nodes that are in the drone's tree of neighbors.
+        """
+        printer.print_debug_colored(0, 200, 0, f"Updating {self} from {new_parent}, new hop count: {new_hop_count}, old hop count: {self.hop_from_depot}")
+        self.set_hop_from_depot(new_hop_count, message=f"Updating newer hop count from {new_parent}")
+
+        #Send back the updated information about the new hop_count from the depot
+        uptodate_neighbor_table = NeighborTable(self.simulator, self)
+        new_node_info = NodeInfo(self.identifier, self.speed, self.coords, self.hop_from_depot)
+        uptodate_neighbor_table.add_node(new_node_info)
+        new_neighbor_table = self.neighbor_table.generate_update(uptodate_neighbor_table)
+        self.parent_node.update_nodes_table_by_neighbor_table(new_neighbor_table) 
+
+        children = self.get_children()
+        child: Drone
+        for child in children:
+            child.update_newest_hop_count(self.hop_from_depot+1, self)
+    
+    def update_hop_count_bridge(self, hop_count_bridge):
+        """
+        If the node self has a hop_count = None it means it's disconnected. 
+        In case anotehr drone with hop_count != None sends a DiscoveryPacket to self, it means that self can connect to the depot using the new drone as a bridge.
+        The function updates the hop_counts of self and all its children.
+        """
+        self.set_hop_from_depot(hop_count_bridge + 1, message=f"Bridging")
+        #Send back the updated information about the new hop_count from the depot
+        uptodate_neighbor_table = NeighborTable(self.simulator, self)
+        new_node_info = NodeInfo(self.identifier, self.speed, self.coords, self.hop_from_depot)
+        uptodate_neighbor_table.add_node(new_node_info)
+        new_neighbor_table = self.neighbor_table.generate_update(uptodate_neighbor_table)
+        self.parent_node.update_nodes_table_by_neighbor_table(new_neighbor_table) 
+
+        children = self.get_children()
+        child: Drone
+        for child in children:
+            if child.hop_from_depot is None :
+                child.update_hop_count_bridge(self.hop_from_depot)
+    
+    def update_parent(self, new_parent, new_hop_count):
+        """
+        If the drone receives a DiscoveryPacket with a lower hop count, then it updates its parent and recursively
+        the hop count of all the rest of the nodes that are in its tree of neighbors.
+        """
+        old_hop_count = self.hop_from_depot
+        if old_hop_count == None: #The drone wasn't connected to the depot, but know there is a drone that connects it
+            self.update_hop_count_bridge(new_hop_count) #Update all the children
+            return
+        if new_hop_count < old_hop_count: #The hop count is lower, so it's necessary to update it
+            self.parent_node = new_parent
+            self.update_newest_hop_count(new_hop_count, new_parent)
+            
+
+    def send_ack_unicast(self, ack_packet: AckDiscoveryPacket, parent_node: Drone | Depot):
+        self.simulator.tester.add_ack(ack_packet, parent_node)
         parent_node.update_nodes_table_by_ack(ack_packet)
     
     def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable):
-        for _, neighbor_info in neighbor_table.neighbors_list.items():
-            node_info = NodeInfo(neighbor_info.self_id, neighbor_info.self_moving_speed, neighbor_info.self_location, neighbor_info.hop_count)
-            self.neighbor_table.add_node(node_info)
+        """
+        Generates a new neighbor table that's the union between the incoming one and the stored one.
+        It then unicast the new neighbor table to the parent node.
+        This is needed in order for the depot to receive all the cumulative neighbor tables that were sended between the drones
+        in order to know which are the drones connected to the depot.
+        """
+        if self.parent_node is not None:
+            new_neighbor_table = self.neighbor_table.generate_update(neighbor_table)
+            self.parent_node.update_nodes_table_by_neighbor_table(new_neighbor_table)
 
+        self.neighbor_table.update_own(neighbor_table)
+    
     def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
         node_info = NodeInfo(ack_packet.self_id, ack_packet.self_moving_speed, ack_packet.self_location, ack_packet.hop_count)
         self.neighbor_table.add_node(node_info)    
 
-    def reset_discovery_info(self):
-        self.discovery_packet_first_received = True
-
-    def reset_neighbors_table(self):
-        self.neighbor_table = NeighborTable(self.simulator)
+    def reset_discovery_state(self):
+        self.parent_node = None
+        self.set_hop_from_depot(None, message="Resetting discovery state")
+        self.neighbor_table = NeighborTable(self.simulator, self)
 
     def update_packets(self, cur_step):
         """
@@ -650,7 +879,6 @@ class Environment(SimulatedEntity):
     def add_depot(self, depot: Depot):
         """ add depot in the env """
         self.depot = depot
-
 
 class EventGenerator(SimulatedEntity):
 

@@ -1,10 +1,12 @@
 from src.drawing import pp_draw
 from src.entities.uav_entities import *
 from src.simulation.metrics import Metrics
-from src.utilities import config, utilities
+from src.utilities import config, utilities, printer
 from src.routing_algorithms.net_routing import MediumDispatcher
+from src.utilities.tester import Tester
 from collections import defaultdict
 from tqdm import tqdm
+
 
 import numpy as np
 import math
@@ -95,6 +97,8 @@ class Simulator:
 
         self.start = time.time()
         self.event_generator = utilities.EventGenerator(self)
+
+        self.tester = Tester(self)
 
     def __setup_net_dispatcher(self):
         self.network_dispatcher = MediumDispatcher(self.metrics)
@@ -215,12 +219,16 @@ class Simulator:
             # Start node discovery
             self.depot.start_discovery()
 
+            #TODO: Discovery Tests, to remove in final version ######################
+            self.tester.check_drone_neighbors() 
+            self.tester.check_depot_discovery()
+            self.tester.check_depot_information()
+            #############################################
+
             for drone in self.drones:
                 # 1. update expired packets on drone buffers
                 # 2. try routing packets vs other drones or depot
                 # 3. actually move the drone towards next waypoint or depot
-
-                drone.reset_discovery_info()
                 drone.update_packets(cur_step)
                 drone.routing(self.drones, self.depot, cur_step)
                 drone.move(self.time_step_duration)
@@ -231,39 +239,16 @@ class Simulator:
 
             if self.show_plot or config.SAVE_PLOT:
                 self.__plot(cur_step)
+            
+            
+        
+            printer.print_debug_colored(197, 227, 152, "--------------------------------------------------------------------------------")
 
-            #TODO: DEBUGGING TESTS
-            #####################################################################
-            #TODO: Lost acks debug
-            def check_if_lost_ack(drone):
-                if drone.identifier in self.metrics.sent_acks:
-                    acks_received = self.metrics.sent_acks[drone.identifier]
-                    neighbor_table = drone.neighbor_table.get_drones()
-                    lost_drones = set(acks_received).difference(neighbor_table)
-                    return lost_drones
-                return set()
-            
-            def check_if_lost_ack_depot():
-                if self.depot.identifier in self.metrics.sent_acks:
-                    acks_received = self.metrics.sent_acks[self.depot.identifier]
-                    neighbor_table = set(self.depot.nodes_table.nodes_list.keys())
-                    lost_drones = {drone.identifier for drone in acks_received}.difference(neighbor_table)
-                    return lost_drones
-                return set()
-            
+            drone: Drone
             for drone in self.drones:
-                lost_drones = check_if_lost_ack(drone)
-                if lost_drones != set():
-                    print(f"Lost drones: {lost_drones}")
-            depot_lost_drones = check_if_lost_ack_depot()
-            if depot_lost_drones != set():
-                print(f"Depot lost drones: {depot_lost_drones}")
-
-            self.metrics.sent_acks = {}
+                drone.reset_discovery_state()
             
-            for drone in self.drones:
-                drone.reset_neighbors_table()
-            
+        
         if config.DEBUG:
             print("End of simulation, sim time: " + str(
                 (cur_step + 1) * self.time_step_duration) + " sec, #iteration: " + str(cur_step + 1))
