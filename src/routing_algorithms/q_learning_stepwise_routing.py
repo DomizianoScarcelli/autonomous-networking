@@ -37,16 +37,14 @@ class QlearningStepwiseRouting(BASE_routing):
             #Otherwise (if the drone, the chosen action, is moving towards the depot but it is not in its communication range)
             if self.drone.identifier in self.simulator.depot.nodes_table.nodes_list: #In this case the drone is linked with the depot and hop != None
                 hop = self.simulator.depot.nodes_table.nodes_list[self.drone.identifier].hop_count
-                if self.drone.identifier in self.link_stability.keys():
-                    reward = self.OMEGA*np.exp(1/hop) + (1-self.OMEGA)*self.link_stability[old_action.identifier][self.drone.identifier]
-                    if reward > self.RMAX:
-                        self.RMAX = reward
-                    if reward < self.RMIN:
-                        self.RMIX = reward
+                reward = self.OMEGA*np.exp(1/hop) + (1-self.OMEGA)*self.link_stability[old_action.identifier][self.drone.identifier]
+                if reward > self.RMAX:
+                    self.RMAX = reward
+                if reward < self.RMIN:
+                    self.RMIX = reward
             else:
-                if self.drone.identifier in self.link_stability.keys():
-                    reward = self.link_stability[old_action.identifier][self.drone.identifier]
-        if self.old_state != None and reward != None:
+                reward = self.link_stability[old_action.identifier][self.drone.identifier]
+        if self.old_state != None and reward != 0:
             self.update_qtable(self.old_state.identifier, self.drone.identifier, self.drone.identifier, reward)
     
     #This function returns the best relay to send packets
