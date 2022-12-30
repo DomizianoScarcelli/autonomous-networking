@@ -103,7 +103,8 @@ class QlearningStepwiseRouting(BASE_routing):
             link_quality_ij = np.exp(-7*(util.euclidean_distance(i.coords, j.coords)/config.COMMUNICATION_RANGE_DRONE)) if i != j else 0
             link_qualities.append(link_quality_ij) #We store the qualities between i and j
         for step in range(starting_point, self.simulator.cur_step): #Finally we assign the computed link qualities to each step from starting point to the current step.
-            self.link_qualities[step] = link_qualities
+            self.link_qualities[step] = {}
+            self.link_qualities[step][i.identifier] = link_qualities
         while (len(self.link_qualities.keys()) > self.simulator.n_drones): #Since we need only the last n link qualities, we delete the others (saves a lot of memory!)
             min_step = np.min(list(self.link_qualities.keys()))
             del self.link_qualities[min_step]
@@ -111,7 +112,7 @@ class QlearningStepwiseRouting(BASE_routing):
     #Compute the sum of the n last link qualities between self and and another drone (usually a neighbor) (n is the number of drones in the simulator). The output is used to compute the link stability.
     def sum_n_last_link_qualities(self, drone):
         #Since we keep only the last n link qualities computed in the link quality dictionary, we simply sum the all link quality values for the given drone
-        return sum(link_qualities[drone.identifier] for link_qualities in self.link_qualities.values())
+        return sum([self.link_qualities[step][self.drone.identifier][drone.identifier] for step in self.link_qualities.keys()])
 
     #TO CHANGE! (how to compute? - 𝑣_i,j represents the speed at which nodes 𝑖 and 𝑗 are moving away)
     def compute_nodes_speed(self, cur_drone, neighbors):
