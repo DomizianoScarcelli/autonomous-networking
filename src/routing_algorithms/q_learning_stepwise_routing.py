@@ -21,6 +21,7 @@ class QlearningStepwiseRouting(BASE_routing):
         self.q_table = self.instantiate_table() #{drone_1: [drone_1, drone_2, ..., drone_n], .., drone_n: [drone_1, drone_2, ..., drone_n]}
         self.link_stability = self.instantiate_table()
         self.old_state = None
+        self.distance_vector = {} #{cur_step: [drone_i_j: [distance_i_j]]}
 
     #Function which is called at each step and it is used to compute the reward for each drone. After a reward has been chosen, another function is called to update the qtable accordingly.
     def compute_reward(self, old_action):
@@ -50,13 +51,17 @@ class QlearningStepwiseRouting(BASE_routing):
     #This function returns the best relay to send packets
     def relay_selection(self): 
         self.update_link_quality() #Compute the link qualities based on the distance between the current drone and the others and save them to self.link_qualities dictionary
-        drones_speed = self.compute_nodes_speed(self.drone, self.simulator.drones) #Compute the speed at which two nodes move away (YET TO IMPLEMENT - probabilmente va inserita nel ciclo for più in basso)
         link_quality_sum = {} #Stores the sum of link qualities in the last n steps (n is the number of drones) between the current drone and the neighbors
-
+        
+        print(self.drone.identifier)
+        
         for neighbor in self.drone.neighbor_table.neighbors_list:
             neighbor = self.simulator.drones[neighbor]
+            
+            relative_speed = self.compute_nodes_speed(self.drone, neighbor, self.simulator.cur_step) #Compute the speed at which two nodes move away
+            
             link_quality_sum[neighbor.identifier] = self.sum_n_last_link_qualities(neighbor) #Sum the last n link qualities between self and the neighbor (n is the number of drones)
-            link_stability_ij = (1-self.BETA)*np.exp(1/drones_speed[neighbor.identifier])+self.BETA*(link_quality_sum[neighbor.identifier]/self.simulator.n_drones) #Computes the link stability between self and the neighbor
+            link_stability_ij = (1-self.BETA)*np.exp(1/relative_speed)+self.BETA*(link_quality_sum[neighbor.identifier]/self.simulator.n_drones) #Computes the link stability between self and the neighbor
             self.link_stability[self.drone.identifier][neighbor.identifier] = link_stability_ij
             self.link_stability[neighbor.identifier][self.drone.identifier]= link_stability_ij
 
@@ -112,7 +117,36 @@ class QlearningStepwiseRouting(BASE_routing):
         #Since we keep only the last n link qualities computed in the link quality dictionary, we simply sum the all link quality values for the given drone
         return sum([self.link_qualities[step][self.drone.identifier][drone.identifier] for step in self.link_qualities.keys()])
 
-    #TO CHANGE! (how to compute? - 𝑣_i,j represents the speed at which nodes 𝑖 and 𝑗 are moving away)
-    def compute_nodes_speed(self, cur_drone, neighbors):
-        curr_speed = np.array([drone.speed for drone in neighbors]) #to change!
-        return curr_speed
+    #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
+    def compute_nodes_speed(self, drone_i, drone_j, step):
+        # Ad ogni step, durante il calcolo della link stability, per ogni nodo vicino (j) al drone corrente (i) vado a calcolarmi una sorta di velocitá relativa in questo modo:
+        # 1.	Utilizzo le coordinate della posizione corrente e le coordinate fornite da next_target del nodo i e j per capire in che direzione stanno procedendo.
+        # 2.	Successivamente in base a questa direzione e alla loro DRONE_SPEED trovo le coordinate del punto che ogni drone raggiungerá al prossimo step (una sorta di next_step compreso nel percorso che parte da cur_pos e next_target).
+        # 3.	A questo punto avró un vettore per ogni drone con due coordinate ([cur_pos], [next_step]), li chiameremo rispettivamente dist_i e dist_j.
+        # 4.	Li sommiamo entrambi ottenendo la distanza percorsa in quello step da entrambi i droni.
+        # 5.	Infine calcoliamo la velocitá relativa in questo modo: velocitá = distanza appena calcolata / tempo (inteso come time_step_duration)
+        # 
+        # La velocitá ottenuta, secondo il nostro ragionamento, dovrebbe essere compresa tra 0 (se i nodi si stanno muovendo nella stessa direzione) e 2*DRONE_SPEED (se vanno in direzioni opposte).
+        
+        # Vorreste calcolare la velocità relativa dei due punti calcolando la posizione corrente di entrambe i punti e misurando la distanza che c'è tra i due punti.
+        # Dopo un delta t vi ricalcolate la posizione corrente dei punti e misurate la distanza che c'è.
+        # A questo punto potete prendere la differenza nella distanza dei punti a tempo t e t + delta e dividerla per il delta e dovreste ottenere la velocità relativa.
+
+        if step not in self.distance_vector:
+            self.distance_vector[step] = {}
+            identifier = str(drone_i.identifier) + "_" + str(drone_j.identifier)
+            if identifier not in self.distance_vector[step]:
+                cur_distance = util.euclidean_distance(drone_i.coords, drone_j.coords)
+                self.distance_vector[step][identifier] = cur_distance
+
+                cur_speed = 1
+            else:
+                old_distance = self.distance_vector[step][identifier]
+                cur_distance = util.euclidean_distance(drone_i.coords, drone_j.coords)
+                self.distance_vector[step][identifier] = cur_distance
+
+                cur_speed = abs(old_distance - cur_distance) / config.TS_DURATION
+        else:
+            cur_speed = 1
+
+        return cur_speed
