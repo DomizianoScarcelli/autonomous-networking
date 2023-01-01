@@ -451,12 +451,12 @@ class Drone(Entity):
 
     def update_link_stability(self):
         link_quality_sum = {} #Stores the sum of link qualities in the last n steps (n is the number of drones) between the current drone and the others
-        for j in self.simulator.drones:
+        for j in self.neighbor_table.get_drones():
             #neighbor = self.simulator.drones[neighbor]
             link_quality_sum[j.identifier] = self.sum_n_last_link_qualities(j) #Sum the last n link qualities between the current_drone and the others (n is the number of drones)
             relative_speed_ij = self.compute_speed(j)
             speed = [1 for _ in range(self.simulator.n_drones)]
-            link_stability_ij = (1-config.BETA)*np.exp(1/relative_speed_ij)+config.BETA*(link_quality_sum[j.identifier]/self.simulator.n_drones) #Computes the link stability between the current_drone and the neighbor
+            link_stability_ij = (1-config.BETA)*np.exp(1/relative_speed_ij)+config.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list)) #Computes the link stability between the current_drone and the neighbor
             self.link_stabilities[j.identifier] = link_stability_ij #Update the link stability between current_drone and the drone j
     
     def compute_speed(self, drone):
