@@ -58,7 +58,7 @@ SIM_DURATION = 15000   # int: steps of simulation. # ***
 TS_DURATION = 0.150   # float: seconds duration of a step in seconds.
 SEED = 20         # int: seed of this simulation.
 
-N_DRONES = 20      # int: number of drones. # ***
+N_DRONES = 5      # int: number of drones. # ***
 ENV_WIDTH = 1500      # float: meters, width of environment.
 ENV_HEIGHT = 1500     # float: meters, height of environment.
 

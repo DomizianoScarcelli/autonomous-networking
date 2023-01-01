@@ -406,6 +406,7 @@ class Drone(Entity):
         self.residual_energy = self.simulator.drone_max_energy
         self.come_back_to_mission = False  # if i'm coming back to my applicative mission
         self.last_move_routing = False  # if in the last step i was moving to depot
+        self.last_coords = None #Coordinates at the previous step
 
         # dynamic parameters
         self.tightest_event_deadline = None  # used later to check if there is an event that is about to expire
@@ -427,13 +428,13 @@ class Drone(Entity):
         #Neighbor_table
         self.neighbor_table = NeighborTable(self.simulator, self) #For discovery of the Multi-UAV nodes information in the neighbor network
         self.link_qualities = {}
-        self.link_stabilities = {}
+        self.link_stabilities = [0 for _ in range(self.simulator.n_drones)]
 
         self.parent_node: Drone | Depot = None
 
         self.hop_from_depot = None
     
-    def update_link_quality(self, cur_step):
+    def compute_link_quality(self, cur_step):
         cur_link_qualities = []
         for j in self.simulator.drones: #For each drones
             #We compute the link quality between i (self.drone) and the other j drones that depends on the distance. We use an exponential decay function so the closer they are, the higher the quality.
@@ -445,22 +446,23 @@ class Drone(Entity):
             del self.link_qualities[min_step]
     
     def sum_n_last_link_qualities(self, drone):
-        #Since we keep only the last n link qualities computed in the link quality dictionary, we simply sum the all link quality values for the given drone
+        #Since we keep only the last n link qualities computed in the link quality dictionary, we simply sum all link quality values for the given drone
         return sum([link_quality_by_step[drone.identifier] for link_quality_by_step in self.link_qualities.values()])
 
-    def update_link_stabilities(self, cur_step):
-        cur_link_stabilities = []
-        link_quality_sum = {} #Stores the sum of link qualities in the last n steps (n is the number of drones) between the current drone and the neighbors
+    def update_link_stability(self):
+        link_quality_sum = {} #Stores the sum of link qualities in the last n steps (n is the number of drones) between the current drone and the others
         for j in self.simulator.drones:
             #neighbor = self.simulator.drones[neighbor]
-            link_quality_sum[j.identifier] = self.sum_n_last_link_qualities(j) #Sum the last n link qualities between self and the neighbor (n is the number of drones)
-            link_stability_ij = (1-config.BETA)*np.exp(1/0.5)+config.BETA*(link_quality_sum[j.identifier]/self.simulator.n_drones) #Computes the link stability between self and the neighbor
-            cur_link_stabilities.append(link_stability_ij)
-        self.link_stabilities[cur_step] = cur_link_stabilities
-        while (len(self.link_stabilities.keys()) > self.simulator.n_drones): #Since we need only the last n link qualities, we delete the others (saves a lot of memory!)
-            min_step = np.min(list(self.link_stabilities.keys()))
-            del self.link_stabilities[min_step]
-
+            link_quality_sum[j.identifier] = self.sum_n_last_link_qualities(j) #Sum the last n link qualities between the current_drone and the others (n is the number of drones)
+            relative_speed_ij = self.compute_speed(j)
+            speed = [1 for _ in range(self.simulator.n_drones)]
+            link_stability_ij = (1-config.BETA)*np.exp(1/relative_speed_ij)+config.BETA*(link_quality_sum[j.identifier]/self.simulator.n_drones) #Computes the link stability between the current_drone and the neighbor
+            self.link_stabilities[j.identifier] = link_stability_ij #Update the link stability between current_drone and the drone j
+    
+    def compute_speed(self, drone):
+        #Write here the code to compute the speed
+        speed = 1
+        return speed
     
     def set_hop_from_depot(self, new_hop, message=""):
         """
