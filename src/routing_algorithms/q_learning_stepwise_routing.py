@@ -47,7 +47,6 @@ class QlearningStepwiseRouting(BASE_routing):
     
     #This function returns the best relay to send packets
     def relay_selection(self):
-        print(self.q_table)
         self.old_state = self.drone #Update old_state with current_state (useful in the reward function)
         if len(self.drone.neighbor_table.neighbors_list) == 0: #If there are no neighbors, keep the packets
             return self.drone
