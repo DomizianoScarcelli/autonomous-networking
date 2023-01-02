@@ -7,7 +7,6 @@ from src.utilities.tester import Tester
 from collections import defaultdict
 from tqdm import tqdm
 
-
 import numpy as np
 import math
 import time
@@ -219,25 +218,27 @@ class Simulator:
             # Start node discovery
             self.depot.start_discovery()
 
-            #TODO: Discovery Tests, to remove in final version ######################
-            self.tester.check_drone_neighbors() 
-            self.tester.check_depot_discovery()
-            self.tester.check_depot_information()
-            #############################################
+            # #TODO: Discovery Tests, to remove in final version ######################
+            # self.tester.check_drone_neighbors() 
+            # self.tester.check_depot_discovery()
+            # self.tester.check_depot_information()
+            # #############################################
 
             for drone in self.drones:
                 # 1. update expired packets on drone buffers
                 # 2. try routing packets vs other drones or depot
                 # 3. actually move the drone towards next waypoint or depot
-                drone.compute_link_quality(cur_step) #Compute the link quality for the current_drone and the others at cur_step
-                drone.update_link_stability() #Compute the link stability for the current_drone and the others
+                if self.routing_algorithm == config.RoutingAlgorithm.QLS:
+                    drone.compute_link_quality(cur_step) #Compute the link quality for the current_drone and the others at cur_step
+                    drone.update_link_stability() #Compute the link stability for the current_drone and the others
                 drone.update_packets(cur_step)
                 #print(drone.identifier, drone.link_stabilities)
                 drone.routing(self.drones, self.depot, cur_step)
                 drone.move(self.time_step_duration)
             
-            for drone in self.drones:
-                drone.compute_reward() #After the action has been chosen, compute the reward
+            if self.routing_algorithm == config.RoutingAlgorithm.QLS:
+                for drone in self.drones:
+                    drone.compute_reward() #After the action has been chosen, compute the reward
 
             # in case we need probability map
             if config.ENABLE_PROBABILITIES:
