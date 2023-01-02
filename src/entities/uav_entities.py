@@ -406,13 +406,10 @@ class Drone(Entity):
         self.residual_energy = self.simulator.drone_max_energy
         self.come_back_to_mission = False  # if i'm coming back to my applicative mission
         self.last_move_routing = False  # if in the last step i was moving to depot
-        self.last_coords = None #Coordinates at the previous step
 
         # dynamic parameters
         self.tightest_event_deadline = None  # used later to check if there is an event that is about to expire
         self.current_waypoint = 0
-
-        self.distance_vector = {} #{drone_i_j: [distance_i_j]}
 
         self.__buffer = []  # contains the packets
 
@@ -431,6 +428,9 @@ class Drone(Entity):
         self.neighbor_table = NeighborTable(self.simulator, self) #For discovery of the Multi-UAV nodes information in the neighbor network
         self.link_qualities = {}
         self.link_stabilities = [0 for _ in range(self.simulator.n_drones)]
+
+        self.distance_vector = {} #{drone_i_j: [distance_i_j]}
+        self.distance_vector_2 = [0 for _ in range(self.simulator.n_drones) for neighbor in range(self.simulator.n_drones)]
 
         self.parent_node: Drone | Depot = None
 
@@ -459,12 +459,9 @@ class Drone(Entity):
             
             relative_speed_ij = self.compute_nodes_speed(self, j) #Compute the speed at which two nodes move away
         
-            #if the relative speed is None it means we are in the first step so we don't consider it during the link stability computation
-            if relative_speed_ij == None:
-                link_stability_ij = (1-config.BETA)+config.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list)) #Computes the link stability between the current_drone and the neighbor
-            else:
-                link_stability_ij = (1-config.BETA)*np.exp(1/relative_speed_ij)+config.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list)) #Computes the link stability between the current_drone and the neighbor
-            
+            #Compute the link stability between the current drone and the neighbor. If the relative speed is None it means we are in the first step so we don't consider it during the link stability computation
+            link_stability_ij = link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list) if relative_speed_ij == None else (1-config.BETA)*np.exp(1/relative_speed_ij)+config.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list))
+
             self.link_stabilities[j.identifier] = link_stability_ij #Update the link stability between current_drone and the drone j
             
     #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
@@ -495,6 +492,21 @@ class Drone(Entity):
             self.distance_vector[identifier] = cur_distance
 
             cur_speed = abs(old_distance - cur_distance) / config.TS_DURATION
+        
+        """
+        print(cur_speed)
+        neighbor = drone_j
+        if self.simulator.cur_step > 1:
+            old_distance = self.distance_vector_2[neighbor.identifier]
+            cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
+            cur_speed_2 = abs(old_distance - cur_distance) / config.TS_DURATION
+            self.distance_vector_2[neighbor.identifier] = cur_distance
+            print(cur_speed_2)
+        else:
+            cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
+            self.distance_vector_2[neighbor.identifier] = cur_distance
+            print(cur_speed_2)
+        """
 
         return cur_speed
     
