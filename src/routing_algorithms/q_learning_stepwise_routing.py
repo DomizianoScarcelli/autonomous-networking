@@ -10,7 +10,6 @@ class QlearningStepwiseRouting(BASE_routing):
         BASE_routing.__init__(self, drone, simulator)
         self.LEARNING_RATE = 0.8 #Learning rate
         self.DISCOUNT_FACTOR = 0.1 #Discount factor (it represents the importance of future rewards)
-        self.BETA = 0.8 #Coefficient weight value (to change!)
         self.OMEGA = 0.8 #Used in the reward function (to change!)
         self.RMAX = 2 #Maximum reward value
         self.RMIN = -1 #Minimum reward value
