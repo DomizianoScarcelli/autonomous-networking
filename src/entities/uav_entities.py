@@ -438,11 +438,11 @@ class Drone(Entity):
         self.hop_from_depot = None
     
     def compute_link_quality(self, cur_step):
-        cur_link_qualities = []
-        for j in self.simulator.drones: #For each drones
-            #We compute the link quality between i (self.drone) and the other j drones that depends on the distance. We use an exponential decay function so the closer they are, the higher the quality.
+        cur_link_qualities = [0 for _ in range(self.simulator.n_drones)]
+        for j in self.neighbor_table.get_drones(): #For each drones
+            #We compute the link quality between i (self.drone) and the neighbor j that depends on the distance. We use an exponential decay function so the closer they are, the higher the quality.
             link_quality_ij = np.exp(-7*(utilities.euclidean_distance(self.coords, j.coords)/config.COMMUNICATION_RANGE_DRONE)) if self.identifier != j else 0
-            cur_link_qualities.append(link_quality_ij) #We store the qualities between i and j
+            cur_link_qualities[j.identifier] = link_quality_ij #We store the qualities between i and j
         self.link_qualities[cur_step] = cur_link_qualities
         while (len(self.link_qualities.keys()) > self.simulator.n_drones): #Since we need only the last n link qualities, we delete the others (saves a lot of memory!)
             min_step = np.min(list(self.link_qualities.keys()))
@@ -455,14 +455,10 @@ class Drone(Entity):
     def update_link_stability(self):
         link_quality_sum = {} #Stores the sum of link qualities in the last n steps (n is the number of drones) between the current drone and the others
         for j in self.neighbor_table.get_drones():
-            #neighbor = self.simulator.drones[neighbor]
             link_quality_sum[j.identifier] = self.sum_n_last_link_qualities(j) #Sum the last n link qualities between the current_drone and the others (n is the number of drones)
-            
             relative_speed_ij = self.compute_nodes_speed(self, j) #Compute the speed at which two nodes move away
-        
             #Compute the link stability between the current drone and the neighbor. If the relative speed is None it means we are in the first step so we don't consider it during the link stability computation
             link_stability_ij = link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list) if relative_speed_ij == None else (1-self.BETA)*np.exp(1/relative_speed_ij)+self.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list))
-
             self.link_stabilities[j.identifier] = link_stability_ij #Update the link stability between current_drone and the drone j
             
     #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
