@@ -124,6 +124,3 @@ NN_MODEL_PATH = "data/nnmodels/"
 # --------------- new cell probabilities -------------- #
 CELL_PROB_SIZE_R = 1.875  # the percentage of cell size with respect to drone com range
 ENABLE_PROBABILITIES = False
-
-# --------------- QLearning Parameters -------------- #
-BETA = 0.8

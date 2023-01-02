@@ -406,6 +406,7 @@ class Drone(Entity):
         self.residual_energy = self.simulator.drone_max_energy
         self.come_back_to_mission = False  # if i'm coming back to my applicative mission
         self.last_move_routing = False  # if in the last step i was moving to depot
+        self.BETA = 0.8 #Link stability constants
 
         # dynamic parameters
         self.tightest_event_deadline = None  # used later to check if there is an event that is about to expire
@@ -460,7 +461,7 @@ class Drone(Entity):
             relative_speed_ij = self.compute_nodes_speed(self, j) #Compute the speed at which two nodes move away
         
             #Compute the link stability between the current drone and the neighbor. If the relative speed is None it means we are in the first step so we don't consider it during the link stability computation
-            link_stability_ij = link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list) if relative_speed_ij == None else (1-config.BETA)*np.exp(1/relative_speed_ij)+config.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list))
+            link_stability_ij = link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list) if relative_speed_ij == None else (1-self.BETA)*np.exp(1/relative_speed_ij)+self.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list))
 
             self.link_stabilities[j.identifier] = link_stability_ij #Update the link stability between current_drone and the drone j
             
