@@ -439,7 +439,7 @@ class Drone(Entity):
     
     def compute_link_quality(self, cur_step):
         cur_link_qualities = [0 for _ in range(self.simulator.n_drones)]
-        for j in self.neighbor_table.get_drones(): #For each drones
+        for j in self.neighbor_table.get_drones(): #For each neighbors
             #We compute the link quality between i (self.drone) and the neighbor j that depends on the distance. We use an exponential decay function so the closer they are, the higher the quality.
             link_quality_ij = np.exp(-7*(utilities.euclidean_distance(self.coords, j.coords)/config.COMMUNICATION_RANGE_DRONE)) if self.identifier != j else 0
             cur_link_qualities[j.identifier] = link_quality_ij #We store the qualities between i and j
@@ -460,7 +460,21 @@ class Drone(Entity):
             #Compute the link stability between the current drone and the neighbor. If the relative speed is None it means we are in the first step so we don't consider it during the link stability computation
             link_stability_ij = link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list) if relative_speed_ij == None else (1-self.BETA)*np.exp(1/relative_speed_ij)+self.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list))
             self.link_stabilities[j.identifier] = link_stability_ij #Update the link stability between current_drone and the drone j
-            
+    
+    """
+    def compute_nodes_speed(self, neighbor): #Soluzione di Alessio 
+        if self.simulator.cur_step > 1:
+            old_distance = self.distance_vector_2[neighbor.identifier]
+            cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
+            cur_speed = abs(old_distance - cur_distance) / config.TS_DURATION
+            self.distance_vector_2[neighbor.identifier] = cur_distance
+            return cur_speed
+        else:
+            cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
+            self.distance_vector_2[neighbor.identifier] = cur_distance
+            return None
+    """
+
     #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
     def compute_nodes_speed(self, drone_i, drone_j):
         # Our solution (☭)
@@ -489,21 +503,6 @@ class Drone(Entity):
             self.distance_vector[identifier] = cur_distance
 
             cur_speed = abs(old_distance - cur_distance) / config.TS_DURATION
-        
-        """
-        print(cur_speed)
-        neighbor = drone_j
-        if self.simulator.cur_step > 1:
-            old_distance = self.distance_vector_2[neighbor.identifier]
-            cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
-            cur_speed_2 = abs(old_distance - cur_distance) / config.TS_DURATION
-            self.distance_vector_2[neighbor.identifier] = cur_distance
-            print(cur_speed_2)
-        else:
-            cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
-            self.distance_vector_2[neighbor.identifier] = cur_distance
-            print(cur_speed_2)
-        """
 
         return cur_speed
     
