@@ -458,14 +458,16 @@ class Drone(Entity):
             link_quality_sum[j.identifier] = self.sum_n_last_link_qualities(j) #Sum the last n link qualities between the current_drone and the others (n is the number of drones)
             
             relative_speed_ij = self.compute_nodes_speed(self, j) #Compute the speed at which two nodes move away
-
-            print (relative_speed_ij)
-
-            speed = [1 for _ in range(self.simulator.n_drones)]
-            link_stability_ij = (1-config.BETA)*np.exp(1/relative_speed_ij)+config.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list)) #Computes the link stability between the current_drone and the neighbor
+        
+            #if the relative speed is None it means we are in the first step so we don't consider it during the link stability computation
+            if relative_speed_ij == None:
+                link_stability_ij = (1-config.BETA)+config.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list)) #Computes the link stability between the current_drone and the neighbor
+            else:
+                link_stability_ij = (1-config.BETA)*np.exp(1/relative_speed_ij)+config.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list)) #Computes the link stability between the current_drone and the neighbor
+            
             self.link_stabilities[j.identifier] = link_stability_ij #Update the link stability between current_drone and the drone j
-    
-        #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
+            
+    #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
     def compute_nodes_speed(self, drone_i, drone_j):
         # Our solution (☭)
         # Ad ogni step, durante il calcolo della link stability, per ogni nodo vicino (j) al drone corrente (i) vado a calcolarmi una sorta di velocitá relativa in questo modo:
@@ -486,7 +488,7 @@ class Drone(Entity):
             cur_distance = utilities.euclidean_distance(drone_i.coords, drone_j.coords)
             self.distance_vector[identifier] = cur_distance
 
-            cur_speed = 1
+            return None
         else:
             old_distance = self.distance_vector[identifier]
             cur_distance = utilities.euclidean_distance(drone_i.coords, drone_j.coords)
