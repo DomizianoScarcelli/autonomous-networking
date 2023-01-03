@@ -427,8 +427,7 @@ class Drone(Entity):
         self.link_qualities = {}
         self.link_stabilities = [0 for _ in range(self.simulator.n_drones)]
 
-        self.distance_vector = {} #{drone_i_j: [distance_i_j]}
-        self.distance_vector_2 = [0 for _ in range(self.simulator.n_drones) for neighbor in range(self.simulator.n_drones)]
+        self.distance_vector = [0 for _ in range(self.simulator.n_drones) for neighbor in range(self.simulator.n_drones)]
 
         self.parent_node: Drone | Depot = None
 
@@ -453,56 +452,27 @@ class Drone(Entity):
         link_quality_sum = {} #Stores the sum of link qualities in the last n steps (n is the number of drones) between the current drone and the others
         for j in self.neighbor_table.get_drones():
             link_quality_sum[j.identifier] = self.sum_n_last_link_qualities(j) #Sum the last n link qualities between the current_drone and the others (n is the number of drones)
-            relative_speed_ij = self.compute_nodes_speed(self, j) #Compute the speed at which two nodes move away
+            relative_speed_ij = self.compute_nodes_speed(j) #Compute the speed at which two nodes move away
             #Compute the link stability between the current drone and the neighbor. If the relative speed is None it means we are in the first step so we don't consider it during the link stability computation
             link_stability_ij = link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list) if relative_speed_ij == None else (1-self.BETA)*np.exp(1/relative_speed_ij)+self.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list))
             self.link_stabilities[j.identifier] = link_stability_ij #Update the link stability between current_drone and the drone j
     
-    """
-    def compute_nodes_speed(self, neighbor): #Soluzione di Alessio 
+    #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
+    def compute_nodes_speed(self, neighbor):
+        '''
+        Compute the speed at which nodes i and j are moving away, equals the change in distance between them divided by the change in time
+        '''
         if self.simulator.cur_step > 1:
-            old_distance = self.distance_vector_2[neighbor.identifier]
+            old_distance = self.distance_vector[neighbor.identifier]
             cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
             cur_speed = abs(old_distance - cur_distance) / config.TS_DURATION
-            self.distance_vector_2[neighbor.identifier] = cur_distance
+            self.distance_vector[neighbor.identifier] = cur_distance
             return cur_speed
         else:
             cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
-            self.distance_vector_2[neighbor.identifier] = cur_distance
+            self.distance_vector[neighbor.identifier] = cur_distance
             return None
-    """
 
-    #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
-    def compute_nodes_speed(self, drone_i, drone_j):
-        # Our solution (☭)
-        # Ad ogni step, durante il calcolo della link stability, per ogni nodo vicino (j) al drone corrente (i) vado a calcolarmi una sorta di velocitá relativa in questo modo:
-        # 1.	Utilizzo le coordinate della posizione corrente e le coordinate fornite da next_target del nodo i e j per capire in che direzione stanno procedendo.
-        # 2.	Successivamente in base a questa direzione e alla loro DRONE_SPEED trovo le coordinate del punto che ogni drone raggiungerá al prossimo step (una sorta di next_step compreso nel percorso che parte da cur_pos e next_target).
-        # 3.	A questo punto avró un vettore per ogni drone con due coordinate ([cur_pos], [next_step]), li chiameremo rispettivamente dist_i e dist_j.
-        # 4.	Li sommiamo entrambi ottenendo la distanza percorsa in quello step da entrambi i droni.
-        # 5.	Infine calcoliamo la velocitá relativa in questo modo: velocitá = distanza appena calcolata / tempo (inteso come time_step_duration)
-        # 
-        # La velocitá ottenuta, secondo il nostro ragionamento, dovrebbe essere compresa tra 0 (se i nodi si stanno muovendo nella stessa direzione) e 2*DRONE_SPEED (se vanno in direzioni opposte).
-        
-        # Flavio's solution :)
-        # Vorreste calcolare la velocità relativa dei due punti calcolando la posizione corrente di entrambe i punti e misurando la distanza che c'è tra i due punti.
-        # Dopo un delta t vi ricalcolate la posizione corrente dei punti e misurate la distanza che c'è.
-        # A questo punto potete prendere la differenza nella distanza dei punti a tempo t e t + delta e dividerla per il delta e dovreste ottenere la velocità relativa.
-        identifier = str(drone_i.identifier) + "_" + str(drone_j.identifier)
-        if identifier not in self.distance_vector:
-            cur_distance = utilities.euclidean_distance(drone_i.coords, drone_j.coords)
-            self.distance_vector[identifier] = cur_distance
-
-            return None
-        else:
-            old_distance = self.distance_vector[identifier]
-            cur_distance = utilities.euclidean_distance(drone_i.coords, drone_j.coords)
-            self.distance_vector[identifier] = cur_distance
-
-            cur_speed = abs(old_distance - cur_distance) / config.TS_DURATION
-
-        return cur_speed
-    
     def set_hop_from_depot(self, new_hop, message=""):
         """
         Change hop count to another hop count.
