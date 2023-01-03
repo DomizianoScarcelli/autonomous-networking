@@ -10,6 +10,8 @@ from tqdm import tqdm
 import numpy as np
 import math
 import time
+import warnings
+warnings.filterwarnings('ignore')
 
 """
 This file contains the Simulation class. It allows to explicit all the relevant parameters of the simulation,

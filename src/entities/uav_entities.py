@@ -7,9 +7,6 @@ if TYPE_CHECKING:
 import numpy as np
 from src.utilities import config, utilities, printer
 
-
-
-
 class SimulatedEntity:
     """ A simulated entity keeps track of the simulation object, where you can access all the parameters
     of the simulation. No class of this type is directly instantiable.
