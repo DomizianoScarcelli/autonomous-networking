@@ -403,7 +403,7 @@ class Drone(Entity):
         self.residual_energy = self.simulator.drone_max_energy
         self.come_back_to_mission = False  # if i'm coming back to my applicative mission
         self.last_move_routing = False  # if in the last step i was moving to depot
-        self.BETA = 0.8 #Link stability constants
+        self.BETA = 0.8 #It is a coefficient weight value used in the link stability function
 
         # dynamic parameters
         self.tightest_event_deadline = None  # used later to check if there is an event that is about to expire
@@ -424,28 +424,38 @@ class Drone(Entity):
 
         #Neighbor_table
         self.neighbor_table = NeighborTable(self.simulator, self) #For discovery of the Multi-UAV nodes information in the neighbor network
-        self.link_qualities = {}
+        self.link_qualities = {} #{cur_step_i-n: [drone_1, drone_2, ..., drone_n], cur_step_i-(n-1): [drone_1, drone_2, ..., drone_n], .., cur_step_i: [drone_1, drone_2, ..., drone_n]}
         self.link_stabilities = [0 for _ in range(self.simulator.n_drones)]
-
-        self.distance_vector = [0 for _ in range(self.simulator.n_drones) for neighbor in range(self.simulator.n_drones)]
+        self.distance_vector = [0 for _ in range(self.simulator.n_drones) for _ in range(self.simulator.n_drones)]
 
         self.parent_node: Drone | Depot = None
 
         self.hop_from_depot = None
     
     def compute_link_quality(self, cur_step):
-        cur_link_qualities = [0 for _ in range(self.simulator.n_drones)]
-        for j in self.neighbor_table.get_drones(): #For each neighbors
+        """
+            Computes the link quality between the current drone and the neighbors at the current step.
+            The link quality is computed considering the distance between self and the j-th neighbor.
+            @param cur_step: The current step.
+            @return: None
+        """
+        cur_link_qualities = [0 for _ in range(self.simulator.n_drones)] #Used to store the link qualities computed at the current step (the vector is then added to self.link_qualities)
+        for j in self.neighbor_table.get_drones(): #For each neighbor
             #We compute the link quality between i (self.drone) and the neighbor j that depends on the distance. We use an exponential decay function so the closer they are, the higher the quality.
-            link_quality_ij = np.exp(-7*(utilities.euclidean_distance(self.coords, j.coords)/config.COMMUNICATION_RANGE_DRONE)) if self.identifier != j else 0
-            cur_link_qualities[j.identifier] = link_quality_ij #We store the qualities between i and j
-        self.link_qualities[cur_step] = cur_link_qualities
-        while (len(self.link_qualities.keys()) > self.simulator.n_drones): #Since we need only the last n link qualities, we delete the others (saves a lot of memory!)
+            link_quality_ij = np.exp(-7*(utilities.euclidean_distance(self.coords, j.coords)/config.COMMUNICATION_RANGE_DRONE))
+            cur_link_qualities[j.identifier] = link_quality_ij #We store the quality between i and j
+        self.link_qualities[cur_step] = cur_link_qualities #The vector is then added to self.link_qualities where the key is the current step
+        while (len(self.link_qualities.keys()) > self.simulator.n_drones): #Since we need only the last n link qualities (where n is the number of drones), we delete the others (saves a lot of memory!)
             min_step = np.min(list(self.link_qualities.keys()))
             del self.link_qualities[min_step]
     
     def sum_n_last_link_qualities(self, drone):
-        #Since we keep only the last n link qualities computed in the link quality dictionary, we simply sum all link quality values for the given drone
+        """
+            Computes the sum of link qualities between self and the neighbor at the last n steps.
+            @param drone: A neighbor of self with which to calculate the sum of link qualities.
+            @return: The sum of link qualities between self and the neighbor at the last n steps.
+        """
+         #Since we keep only the last n link qualities computed in the link quality dictionary, we simply sum all link quality values for the given drone
         return sum([link_quality_by_step[drone.identifier] for link_quality_by_step in self.link_qualities.values()])
 
     def update_link_stability(self):
@@ -460,17 +470,19 @@ class Drone(Entity):
     #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
     def compute_nodes_speed(self, neighbor):
         '''
-        Compute the speed at which nodes i and j are moving away, equals the change in distance between them divided by the change in time
+            Compute the speed at which nodes i and j are moving away, equals the change in distance between them divided by the change in time.
+            @param drone: A neighbor of self with which to relative speed.
+            @return: The relative between self and the neighbor.
         '''
         if self.simulator.cur_step > 1:
-            old_distance = self.distance_vector[neighbor.identifier]
-            cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
-            cur_speed = abs(old_distance - cur_distance) / config.TS_DURATION
-            self.distance_vector[neighbor.identifier] = cur_distance
+            old_distance = self.distance_vector[neighbor.identifier] #Retrieve the old distance between self and the neighbor
+            cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords) #Computes the current distance between self and the neighbor
+            cur_speed = abs(old_distance - cur_distance) / config.TS_DURATION #Computes the relative speed
+            self.distance_vector[neighbor.identifier] = cur_distance #Store the current distance between self and the neighbor for later usage
             return cur_speed
-        else:
+        else: #Else, if we are at the first step the relative distance is not computable
             cur_distance = utilities.euclidean_distance(self.coords, neighbor.coords)
-            self.distance_vector[neighbor.identifier] = cur_distance
+            self.distance_vector[neighbor.identifier] = cur_distance #Store the current distance between self and the neighbor for later usage
             return None
 
     def set_hop_from_depot(self, new_hop, message=""):
