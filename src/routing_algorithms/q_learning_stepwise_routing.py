@@ -12,7 +12,7 @@ class QlearningStepwiseRouting(BASE_routing):
         self.DISCOUNT_FACTOR = 0.1 #Discount factor (it represents the importance of future rewards)
         self.OMEGA = 0.8 #It is a coefficient weight value used in the reward function
         self.RMAX = 2 #Maximum reward value (updated dinamically)
-        self.RMIN = -1 #Minimum reward value (updated dinamically)
+        self.RMIN = -0.5 #Minimum reward value (updated dinamically)
 
         self.q_table = self.instantiate_qtable() #{drone_1: [drone_1, drone_2, ..., drone_n], .., drone_n: [drone_1, drone_2, ..., drone_n]}
         self.old_state = None #Stores the old_state once an action has been taken (used in the reward function)
