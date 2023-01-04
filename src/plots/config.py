@@ -1,16 +1,9 @@
-"""
-Write your plot configuration script here
-Below you can see just an example about how to write a config file.
-You can import constants, lists and dictionaries in plot_data.py
-"""
-
-# *** EXAMPLE ***
 import numpy as np
 import matplotlib.pyplot as plt
 
-LABEL_SIZE = 22
-LEGEND_SIZE = 20
-TITLE_SIZE = 26
+LABEL_SIZE = 32
+LEGEND_SIZE = 30
+TITLE_SIZE = 36
 TICKS_SIZE = 20
 OTHER_SIZES = 20
 
@@ -18,6 +11,12 @@ METRICS_OF_INTEREST = [
     "number_of_packets_to_depot",
     "packet_mean_delivery_time",
     "mean_number_of_relays"]
+
+METRIC_NAME = {
+    "PTD": "Number Of Packets To Depot",
+    "PDT": "Packet Mean Delivery Time",
+    "MR": "Mean Number Of Relays"
+}
 
 SCALE_LIM_DICT = {
     "number_of_packets_to_depot": {
@@ -35,35 +34,49 @@ SCALE_LIM_DICT = {
 }
 
 PLOT_DICT = {
-    "algo_1": {
+    "RND": {
         "hatch": "",
         "markers": "X",
         "linestyle": "-",
-        "color": plt.cm.tab10(0),
-        "label": "Algo 1",
-        "x_ticks_positions": np.array(np.linspace(0, 8, 5))
+        "color": 'tab:blue',
+        "label": "RND",
+        "x_ticks_positions": np.array(np.arange(5, 35, 5)),
+        "full_name": "RandomRouting"
     },
-    "algo_2": {
+    "GEO": {
         "hatch": "",
         "markers": "p",
         "linestyle": "-",
-        "color": plt.cm.tab10(1),
-        "label": "Algo 2",
-        "x_ticks_positions": np.array(np.linspace(0, 8, 5))
-
+        "color": 'tab:orange',
+        "label": "GEO",
+        "x_ticks_positions": np.array(np.arange(5, 35, 5)),
+        "full_name": "GeoRouting"
     },
-    "algo_n": {
+    "SQL": {
         "hatch": "",
         "markers": "s",
         "linestyle": "-",
-        "color": plt.cm.tab10(8),
-        "label": "Algo n",
-        "x_ticks_positions": np.array(np.linspace(0, 8, 5))
-
+        "color": 'tab:green',
+        "label": "SQL",
+        "x_ticks_positions": np.array(np.arange(5, 35, 5)),
+        "full_name": "SimpleQLRouting"
+    },
+    "GEOQL": {
+        "hatch": "",
+        "markers": "s",
+        "linestyle": "-",
+        "color": 'tab:red',
+        "label": "GEOQL",
+        "x_ticks_positions": np.array(np.arange(5, 35, 5)),
+        "full_name": "GeoQLRouting"
+    },
+    "QLS": {
+        "hatch": "",
+        "markers": "s",
+        "linestyle": "-",
+        "color": 'tab:purple',
+        "label": "QLS",
+        "x_ticks_positions": np.array(np.arange(5, 35, 5)),
+        "full_name": "QLStepwiseRoutingProtocol"
     }
 }
-
-# *** EXAMPLE ***
-
-
-# TODO: Implement your code HERE
