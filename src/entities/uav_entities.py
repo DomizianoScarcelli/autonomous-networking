@@ -187,6 +187,8 @@ class HelloPacket(Packet):
         self.next_target = next_target
         self.src_drone = src_drone  # Don't use this
 
+########################### START ###########################
+
 class DiscoveryPacket(Packet):
     def __init__(self, entity, simulator, hop_count = 1):
         super().__init__(simulator.cur_step, simulator, None)
@@ -289,6 +291,8 @@ class NeighborTable():
     def get_drones(self):
         return [self.simulator.drones[id] for id in self.neighbors_list.keys()]
 
+########################### END ###########################
+
 # ------------------ Depot ----------------------
 class Depot(Entity):
     """ The depot is an Entity. """
@@ -358,6 +362,8 @@ class Depot(Entity):
         get_chain_rec(self)
         return chain
     
+########################### START ###########################
+
     def start_discovery(self):
         """
         Starts the network discovery.
@@ -371,7 +377,7 @@ class Depot(Entity):
             if drone_distance_to_depot <= self.communication_range: #The drone is in the neighborhood of the depot
                 discovery_packet = DiscoveryPacket(self, self.simulator)
                 drone.nodes_discovery(discovery_packet) #Initialize the discovery process, setting the depot as the parent
-        for drone in self.simulator.drones: #The second fore is to send the signal for the drones not in the communication range to start their own network discovery
+        for drone in self.simulator.drones: #The second for is to send the signal for the drones not in the communication range to start their own network discovery
             drone_distance_to_depot = utilities.euclidean_distance(drone.coords, self.coords)
             if drone_distance_to_depot <= self.simulator.depot_control_com_range: #The drone is in the range of the depot control packet range
                 drone.initialize_discovery() #Initialize the discovery without setting the depot as the parent
@@ -386,6 +392,7 @@ class Depot(Entity):
             node_info = NodeInfo(neighbor_info.self_id, neighbor_info.self_moving_speed, neighbor_info.self_location, neighbor_info.hop_count)
             self.nodes_table.add_node(node_info)
 
+########################### END ###########################
 
 # ------------------ Drone ----------------------
 class Drone(Entity):
@@ -432,6 +439,8 @@ class Drone(Entity):
 
         self.hop_from_depot = None
     
+########################### START ###########################
+
     def compute_link_quality(self, cur_step):
         """
             Computes the link quality between the current drone and the neighbors at the current step.
@@ -467,7 +476,6 @@ class Drone(Entity):
             link_stability_ij = link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list) if relative_speed_ij == None else (1-self.BETA)*np.exp(1/relative_speed_ij)+self.BETA*(link_quality_sum[j.identifier]/len(self.neighbor_table.neighbors_list))
             self.link_stabilities[j.identifier] = link_stability_ij #Update the link stability between current_drone and the drone j
     
-    #compute the speed at which nodes 𝑖 and 𝑗 are moving away, equals the change in distance between them divided by the change in time
     def compute_nodes_speed(self, neighbor):
         '''
             Compute the speed at which nodes i and j are moving away, equals the change in distance between them divided by the change in time.
@@ -523,7 +531,7 @@ class Drone(Entity):
         """
         Manage the reception of a DiscoveryPacket if it's the first that the drone receives
         - Sets the parent as the entity that sent it the DiscoveryPacket
-        - Broadcasts the DiscoveryPacket to the drones in its neighborhood\
+        - Broadcasts the DiscoveryPacket to the drones in its neighborhood
 
         If hop_count = None, then the drone is receiving the packet from another Drone that is not linked with the depot
         If discovery_packet.entity == Depot and hop_count = None, then the Drone it's locally initializing the discovery, because it has received the packet from the Depot with Long Range communication.
@@ -561,7 +569,6 @@ class Drone(Entity):
         # Modify Discovery_packet:
         new_discovery_packet = DiscoveryPacket(self, self.simulator, self.hop_from_depot)
         #Broadcast(Discovery_packet)
-
         drone: Drone #Type hints for auto-completion in for-loop
         for drone in self.simulator.drones:
             if drone not in [self, self.parent_node]:
@@ -569,6 +576,8 @@ class Drone(Entity):
                 if self_distance_to_drone <= self.communication_range:
                     drone.nodes_discovery(new_discovery_packet)
                 self.update_nodes_table_by_neighbor_table(self.neighbor_table)
+
+########################### END ###########################
     
     def get_children(self):
         """
@@ -597,7 +606,9 @@ class Drone(Entity):
                 get_chain_rec(child)
         get_chain_rec(self)
         return chain
-    
+
+########################### START ###########################
+
     def update_newest_hop_count(self, new_hop_count, new_parent):
         """
         Updates the hop count of all the rest of the nodes that are in the drone's tree of neighbors.
@@ -679,7 +690,9 @@ class Drone(Entity):
 
     def reset_neighbors_table(self):
         self.neighbor_table = NeighborTable(self.simulator)
-    
+
+########################### END ###########################
+
     def compute_reward(self):
         if self.simulator.routing_algorithm.name == "QLS":
             for drone in self.simulator.drones:
