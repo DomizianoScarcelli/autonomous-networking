@@ -484,7 +484,7 @@ class Drone(Entity):
         self.neighbor_table = NeighborTable(self.simulator, self) #For discovery of the Multi-UAV nodes information in the neighbor network
         self.link_qualities = {} #{cur_step_i-n: [drone_1, drone_2, ..., drone_n], cur_step_i-(n-1): [drone_1, drone_2, ..., drone_n], .., cur_step_i: [drone_1, drone_2, ..., drone_n]}
         self.link_stabilities = [0 for _ in range(self.simulator.n_drones)]
-        self.distance_vector = [0 for _ in range(self.simulator.n_drones) for _ in range(self.simulator.n_drones)]
+        self.distance_vector = [0 for _ in range(self.simulator.n_drones)]
 
         self.parent_node: Drone | Depot = None
 
