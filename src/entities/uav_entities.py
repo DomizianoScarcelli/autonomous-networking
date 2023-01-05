@@ -83,6 +83,13 @@ class Event(Entity):
 
 
 # ------------------ Packet ----------------------
+"""
+!!! NEW CLASSES !!!
+
+- DiscoveryPacket
+- AckDiscoveryPacket
+"""
+
 class Packet(Entity):
     """ A packet is an object created out of an event monitored on the aoi. """
 
@@ -187,9 +194,9 @@ class HelloPacket(Packet):
         self.next_target = next_target
         self.src_drone = src_drone  # Don't use this
 
-########################### START ###########################
 
 class DiscoveryPacket(Packet):
+    """ The discovery packet is used to discover the network """
     def __init__(self, entity, simulator, hop_count = 1):
         super().__init__(simulator.cur_step, simulator, None)
         self.entity = entity
@@ -200,6 +207,7 @@ class DiscoveryPacket(Packet):
 
 
 class AckDiscoveryPacket(Packet): 
+    """ The ack discovery packet is responsible to give info about the drone """
     def __init__(self, sender_id, self_id, self_moving_speed, self_location, hop_count, simulator):
         super().__init__(simulator.cur_step, simulator, None)
         self.sender_id = sender_id
@@ -208,8 +216,18 @@ class AckDiscoveryPacket(Packet):
         self.self_location = self_location
         self.hop_count = hop_count
 
+
 # --------------- Nodes Table -------------------
+"""
+!!! NEW CLASSES !!!
+
+NodeInfo
+NodesTable 
+NeighborTable
+"""
+
 class NodeInfo():
+    """ Contains all the information about the drone """
     def __init__(self, self_id, self_moving_speed, self_location, hop_count):
         self.self_id = self_id
         self.self_moving_speed = self_moving_speed
@@ -229,6 +247,7 @@ class NodeInfo():
         return hash((self.self_id, self.self_moving_speed, self.self_location, self.hop_count))
 
 class NodesTable():
+    """ Stores all the NodeInfo of the drones that are reachable by multi-hop or single-hop """
     def __init__(self):
         self.nodes_list = {}
         
@@ -253,6 +272,7 @@ class NodesTable():
         return self.nodes_list == __o.nodes_list
 
 class NeighborTable():
+    """ Stores all the NodeInfo of the drones that are reachable from the communication range """
     def __init__(self, simulator: Simulator, drone: Drone):
         self.drone = drone
         self.simulator = simulator
@@ -291,9 +311,16 @@ class NeighborTable():
     def get_drones(self):
         return [self.simulator.drones[id] for id in self.neighbors_list.keys()]
 
-########################### END ###########################
 
 # ------------------ Depot ----------------------
+"""
+!!! NEW METHODS !!!
+
+- start_discovery
+- update_nodes_table_by_ack
+- update_nodes_table_by_neighbor_table
+"""
+
 class Depot(Entity):
     """ The depot is an Entity. """
 
@@ -361,8 +388,6 @@ class Depot(Entity):
                 get_chain_rec(child)
         get_chain_rec(self)
         return chain
-    
-########################### START ###########################
 
     def start_discovery(self):
         """
@@ -383,18 +408,44 @@ class Depot(Entity):
                 drone.initialize_discovery() #Initialize the discovery without setting the depot as the parent
 
     def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
+        """ The Depot receive the NodesTable by AckDiscoveryPacket """
         node_info = NodeInfo(ack_packet.self_id, ack_packet.self_moving_speed, ack_packet.self_location, ack_packet.hop_count)
         self.nodes_table.add_node(node_info)
 
     def update_nodes_table_by_neighbor_table(self, neighbor_table: NeighborTable):
+        """ The Depot receive the NodesTable by using NeighborTable """
         neighbor_info: NodeInfo
         for neighbor_info in neighbor_table.neighbors_list.values():
             node_info = NodeInfo(neighbor_info.self_id, neighbor_info.self_moving_speed, neighbor_info.self_location, neighbor_info.hop_count)
             self.nodes_table.add_node(node_info)
 
-########################### END ###########################
 
 # ------------------ Drone ----------------------
+"""
+!!! NEW METHODS !!!
+
+- Link quality
+    - compute_link_quality
+    - sum_n_last_link_qualities
+    - update_link_stability
+    - compute_nodes_speed
+
+- Discovery phase
+    - set_hop_from_depot
+    - initialize_discovery
+    - nodes_discovery
+    - update_newest_hop_count
+    - update_hop_count_bridge
+    - update_parent
+    - send_ack_unicast
+    - update_nodes_table_by_neighbor_table
+    - update_nodes_table_by_ack
+    - reset_discovery_state
+
+- Reward function
+    - compute_reward
+"""
+
 class Drone(Entity):
 
     def __init__(self, identifier: int, path: list, depot: Depot, simulator):
@@ -439,8 +490,6 @@ class Drone(Entity):
 
         self.hop_from_depot = None
     
-########################### START ###########################
-
     def compute_link_quality(self, cur_step):
         """
             Computes the link quality between the current drone and the neighbors at the current step.
@@ -468,6 +517,7 @@ class Drone(Entity):
         return sum([link_quality_by_step[drone.identifier] for link_quality_by_step in self.link_qualities.values()])
 
     def update_link_stability(self):
+        """ Update the link stability of the drone between the current drone and its neighborhood """
         link_quality_sum = {} #Stores the sum of link qualities in the last n steps (n is the number of drones) between the current drone and the others
         for j in self.neighbor_table.get_drones():
             link_quality_sum[j.identifier] = self.sum_n_last_link_qualities(j) #Sum the last n link qualities between the current_drone and the others (n is the number of drones)
@@ -507,7 +557,7 @@ class Drone(Entity):
         """
         neighbors = [drone for drone in self.simulator.drones if utilities.euclidean_distance(self.coords, drone.coords) <= self.communication_range and self != drone] # Calculate the drones in its neighborhood
         drone: Drone
-        for drone in neighbors:
+        for drone in neighbors: #For each drone in its neighborhood start the nodes discovery by sending the DiscoveryPacket
             discovery_packet = DiscoveryPacket(self, self.simulator, hop_count=None)
             drone.nodes_discovery(discovery_packet)
  
@@ -546,11 +596,6 @@ class Drone(Entity):
         if self.has_children() and discovery_packet.hop_count is None: #This is needed in order to avoid cycles of father and child relationship between blobs of non-connected drones.
             return # Ignore the packet otherwise the drone will close the loop
         
-        # #TODO: In theory this should work and the one above should cause a loop, but they both work fine, so since the one above it's more computational efficient I use that one.
-        # I leave this in case it's needed.
-        # if discovery_packet.entity in self.get_chain() and discovery_packet.hop_count is None:
-        #     return 
-
         self.simulator.tester.print_receive_dp(discovery_packet.entity, self)
 
         #The code below runs only if self.parent_node is None (it's the first time that the drone has ever received a DiscoveryPacket)
@@ -570,14 +615,12 @@ class Drone(Entity):
         new_discovery_packet = DiscoveryPacket(self, self.simulator, self.hop_from_depot)
         #Broadcast(Discovery_packet)
         drone: Drone #Type hints for auto-completion in for-loop
-        for drone in self.simulator.drones:
+        for drone in self.simulator.drones: #For each drone in its neighborhood start a new nodes discovery by sending the modified DiscoveryPacket
             if drone not in [self, self.parent_node]:
                 self_distance_to_drone = utilities.euclidean_distance(new_discovery_packet.entity.coords, drone.coords)
                 if self_distance_to_drone <= self.communication_range:
                     drone.nodes_discovery(new_discovery_packet)
-                self.update_nodes_table_by_neighbor_table(self.neighbor_table)
-
-########################### END ###########################
+                self.update_nodes_table_by_neighbor_table(self.neighbor_table) #Also update its NeighborTable
     
     def get_children(self):
         """
@@ -606,8 +649,6 @@ class Drone(Entity):
                 get_chain_rec(child)
         get_chain_rec(self)
         return chain
-
-########################### START ###########################
 
     def update_newest_hop_count(self, new_hop_count, new_parent):
         """
@@ -663,6 +704,7 @@ class Drone(Entity):
             
 
     def send_ack_unicast(self, ack_packet: AckDiscoveryPacket, parent_node: Drone | Depot):
+        """ Sends the ack discovery packet to the parent node """
         self.simulator.tester.add_ack(ack_packet, parent_node)
         parent_node.update_nodes_table_by_ack(ack_packet)
     
@@ -680,10 +722,12 @@ class Drone(Entity):
         self.neighbor_table.update_own(neighbor_table)
     
     def update_nodes_table_by_ack(self, ack_packet: AckDiscoveryPacket):
+        """ The Drone receive the NodesTable by AckDiscoveryPacket """
         node_info = NodeInfo(ack_packet.self_id, ack_packet.self_moving_speed, ack_packet.self_location, ack_packet.hop_count)
         self.neighbor_table.add_node(node_info)    
 
     def reset_discovery_state(self):
+        """ Reset the local state of each individual drone """
         self.parent_node = None
         self.set_hop_from_depot(None, message="Resetting discovery state")
         self.neighbor_table = NeighborTable(self.simulator, self)
@@ -691,9 +735,8 @@ class Drone(Entity):
     def reset_neighbors_table(self):
         self.neighbor_table = NeighborTable(self.simulator)
 
-########################### END ###########################
-
     def compute_reward(self):
+        """ Compute the reward for each individual drone """
         if self.simulator.routing_algorithm.name == "QLS":
             for drone in self.simulator.drones:
                 drone.routing_algorithm.compute_reward(self)
