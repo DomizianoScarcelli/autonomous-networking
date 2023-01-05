@@ -10,7 +10,7 @@ class QlearningStepwiseRouting(BASE_routing):
         BASE_routing.__init__(self, drone, simulator)
         self.LEARNING_RATE = 0.8 #Learning rate
         self.DISCOUNT_FACTOR = 0.1 #Discount factor (it represents the importance of future rewards)
-        self.OMEGA = 0.8 #It is a coefficient weight value used in the reward function
+        self.GAMMA = 0.7 #It is a coefficient weight value used in the reward function
         self.RMAX = 2 #Maximum reward value (updated dinamically)
         self.RMIN = -0.5 #Minimum reward value (updated dinamically)
 
@@ -40,7 +40,7 @@ class QlearningStepwiseRouting(BASE_routing):
             #Case 3: Otherwise (if the drone, the chosen action, is moving towards the depot but it is not in its communication range)
             if self.drone.identifier in self.simulator.depot.nodes_table.nodes_list: #If the drone has a path with the depot, so it's in its nodes table (in this case hop != None)
                 hop = self.simulator.depot.nodes_table.nodes_list[self.drone.identifier].hop_count #Retrieve its hop count from the nodes table
-                reward = self.OMEGA*np.exp(1/hop) + (1-self.OMEGA)*self.drone.link_stabilities[old_state.identifier] #Computes the reward considering the hop count and link stability computed from the chosen drone and the old one
+                reward = self.GAMMA*np.exp(1/hop) + (1-self.GAMMA)*self.drone.link_stabilities[old_state.identifier] #Computes the reward considering the hop count and link stability computed from the chosen drone and the old one
             else:
                 reward = self.drone.link_stabilities[old_state.identifier] #If the hop is not defined (the drone doesn't have a path with the depot), computes the reward with link stability only
             if reward > self.RMAX: #We want RMAX to be the maximum reward possible but we can't know it beforehand so, if a larger reward is found, update its current value
