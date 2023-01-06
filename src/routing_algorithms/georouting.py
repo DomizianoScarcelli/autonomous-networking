@@ -16,8 +16,6 @@ class GeoRouting(BASE_routing):
         @return: The best drone to use as relay or None if no relay is selected
         """
 
-        # TODO: Implement your code HERE
-
         cur_pos = self.drone.coords
         depot_pos = self.drone.depot.coords
         # my_distance_to_depot = util.euclidean_distance(cur_pos, depot_pos)

@@ -109,18 +109,6 @@ class Tester():
             # Retrieve the neighbor list computed in the discovery phase
             discovery_neighbor_list = set(drone.neighbor_table.get_drones())
             
-            # #TODO: DEBUG: this is needed to bypass the fact that the parent node is not in the neighbor list right now
-            # if drone.parent_node is not None:
-            #     discovery_neighbor_list.add(drone.parent_node)
-
-            # #TODO: DEBUG: this is needed to bypass the fact that the node is in its neighbor list
-            # if drone in discovery_neighbor_list:
-            #     discovery_neighbor_list.remove(drone)
-
-            # #TODO: DEBUG: this is needed to bypass the fact that the depot is in the drone neighbor list
-            # if self.simulator.depot in discovery_neighbor_list:
-            #     discovery_neighbor_list.remove(self.simulator.depot)
-
             assert discovery_neighbor_list == correct_neighbor_list, f"""
 
                 Discovery phase neighbors are not correct for {drone}. Computed: {discovery_neighbor_list}, correct: {correct_neighbor_list}
@@ -162,8 +150,23 @@ class Tester():
         Information inside the depot's node table is not correct, or not up-to-date.
         Computed: {computed_information}
         Correct: {correct_information}
+        Depot hop_counter: {self.simulator.depot.get_hop_count()}
         """
-    
+
+    def check_hop_from_depot(self):
+        """
+        Checks if the computed hop count is actually the correct hop count from the depot
+        """
+        hop_counter = self.simulator.depot.get_hop_count()
+        drone: Drone
+        for drone in self.simulator.depot.get_chain():
+            assert drone.hop_from_depot == hop_counter[drone], f"""
+                Hop count is wrong for {drone}.
+                Drone hop count: {drone.hop_from_depot}
+                Correct hop count: {hop_counter[drone]}
+                Full hop counter: {hop_counter}
+            """
+
     def print_real_computed_neighbors(self):
         """
         Prints out the nodes that are geographically inside the communication range and the one computed by the discovery phase
