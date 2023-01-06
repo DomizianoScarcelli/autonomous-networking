@@ -30,7 +30,7 @@ def plot(algorithms: list,
          y_data_std: list,
          type: str):
 
-    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(13, 9))
+    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(17, 9))
     print(f"Algorithms: {algorithms}")
     print(f"y_data: {y_data}\ny_data_std: {y_data_std}")
     print(PLOT_DICT[algorithms[0]]["x_ticks_positions"])
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     data = pd.DataFrame(data_elaboration.compute_data_avg_std("data/evaluation_tests"))
     data = data.sort_values(by = "ndrones")
 
-    algorithms = ["RND"]
+    algorithms = ["RND", "GEO", "SQL", "GEOQL", "QLS"]
     metrics = {"PTD": ["avg_ptd, std_ptd"], "PDT": ["avg_pdt, std_pdt"], "MR": ["avg_mr, std_mr"]}
     for metric in metrics.keys():
         avg_col_name = "avg_"+metric.lower()

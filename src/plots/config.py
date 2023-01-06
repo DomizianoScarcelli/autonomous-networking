@@ -5,7 +5,7 @@ LABEL_SIZE = 32
 LEGEND_SIZE = 30
 TITLE_SIZE = 36
 TICKS_SIZE = 20
-OTHER_SIZES = 20
+OTHER_SIZES = 13
 
 METRICS_OF_INTEREST = [
     "number_of_packets_to_depot",
