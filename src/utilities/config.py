@@ -64,7 +64,7 @@ ENV_HEIGHT = 1500     # float: meters, height of environment.
 
 # events
 EVENTS_DURATION = 1500  # SIM_DURATION  # int: steps, number of time steps that an event lasts  -> to seconds = step * step_duration.
-D_FEEL_EVENT = 1      # int: steps, a new packet is felt (generated on the drone) every 'D_FEEL_EVENT' steps. # ***
+D_FEEL_EVENT = 65      # int: steps, a new packet is felt (generated on the drone) every 'D_FEEL_EVENT' steps. # ***
 P_FEEL_EVENT = .8       # float: probability that the drones feels the event generated on the drone. # ***
 
 """ e.g. given D_FEEL_EVENT = 500, P_FEEL_EVENT = .5, every 500 steps with probability .5 the drone will feel an event."""
@@ -109,7 +109,7 @@ CHANNEL_ERROR_TYPE = ChannelError.GAUSSIAN
 COMMUNICATION_P_SUCCESS = 1   # float: probability to have success in a communication.
 GUASSIAN_SCALE = .9            # float [0,1]: scale the error probability of the guassian -> success * GUASSIAN_SCALER
 PACKETS_MAX_TTL = 200         # float: threshold in the maximum number of hops. Causes loss of packets.
-RETRANSMISSION_DELAY = 50     # int: how many time steps to wait before transmit again (for k retransmissions). # ---  #delta_k
+RETRANSMISSION_DELAY = 10     # int: how many time steps to wait before transmit again (for k retransmissions). # ---  #delta_k
 
 # ------------------------------------------- ROUTING MISC --------------------------------- #
 DISCOVERY_DELAY = 5            # int : how many time steps wait before transmit again an hello message
