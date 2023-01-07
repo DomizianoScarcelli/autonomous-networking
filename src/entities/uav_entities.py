@@ -629,10 +629,10 @@ class Drone(Entity):
 
         if self.parent_node is not None: #The delivery packet arrives from a drone that's not connected to the Depot, since hop_count = None.
             return # Ignore it since the drone already has received a DiscoveryPacket from another drone (connected to the depot) and there is no need to update the hop_count 
-        
-        if self.has_children() and discovery_packet.hop_count is None: #This is needed in order to avoid cycles of father and child relationship between blobs of non-connected drones.
+
+        if discovery_packet.entity in self.get_chain() and discovery_packet.hop_count is None: #This is needed in order to avoid cycles of father and child relationship between blobs of non-connected drones.
             return # Ignore the packet otherwise the drone will close the loop
-        
+
         #The code below runs only if self.parent_node is None (it's the first time that the drone has ever received a DiscoveryPacket)
         self.parent_node = discovery_packet.entity
 
