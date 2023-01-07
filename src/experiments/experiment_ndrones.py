@@ -40,6 +40,7 @@ def sim_setup(n_drones, seed, algorithm):
         routing_algorithm=config.RoutingAlgorithm[algorithm],
         communication_error_type=config.ChannelError.GAUSSIAN,
         show_plot=show_plot,
+        depot_control_com_range=depot_control_com_range,
 
         # ML parameters
         simulation_name="",

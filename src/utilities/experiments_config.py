@@ -23,3 +23,5 @@ event_generation_prob = 0.8
 event_generation_delay = 65
 
 packets_max_ttl = len_simulation
+
+depot_control_com_range = 500
