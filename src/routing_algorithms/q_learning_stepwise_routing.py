@@ -47,7 +47,7 @@ class QlearningStepwiseRouting(BASE_routing):
                 self.RMAX = reward
             elif reward < self.RMIN: #Same for RMIN
                 self.RMIX = reward
-        if self.old_state != None: #If not in the first step (in the first step there is no old_state)
+        if self.old_state != None or (self.old_state != self.old_state != self.drone): #If not in the first step (in the first step there is no old_state)
             self.update_qtable(self.old_state.identifier, self.drone.identifier, self.drone.identifier, reward) #Update the qtable with the computed reward
     
     #This function returns the best relay to send packets
@@ -60,14 +60,19 @@ class QlearningStepwiseRouting(BASE_routing):
         if len(self.drone.neighbor_table.neighbors_list) == 0: #If there are no neighbors, keep the packets
             return self.drone
         else: #Otherwise, choose the action (the neighbor) with the highest QValue
-            best_qvalue = None
-            best_neighbor = None
-            for neighbor in self.drone.neighbor_table.neighbors_list:
-                neighbor = self.simulator.drones[neighbor]
-                if  best_neighbor == None or self.q_table[self.drone.identifier][neighbor.identifier] > best_qvalue:
-                    best_neighbor = neighbor
-                    best_qvalue = self.q_table[self.drone.identifier][neighbor.identifier]
-            return best_neighbor #Returns the drone with the highest Q-Value among the neighbors
+            drone_pool = self.drone.neighbor_table.get_drones() #Select all possible action (neighbors and the drone itself)
+            curr_distances = np.array([util.euclidean_distance(drone.coords, self.simulator.depot_coordinates) for drone in drone_pool]) #Computes the current distances
+            next_distances = np.array([util.euclidean_distance(drone.next_target(), self.simulator.depot_coordinates) for drone in drone_pool]) #Compute the next targets
+            drone_step = curr_distances - next_distances #Compute the difference between the current distances and the next targets (if the value is positive then the drone is heading to the depot)
+            max_qtable_value = best_choice = None
+            for index, drone_distance in np.ndenumerate(drone_step):
+                if drone_distance >= 0: #If the drone is heading to the depot
+                    q_value = self.q_table[self.drone.identifier][drone_pool[index[0]].identifier] #Take its value from the Q-table
+                    if max_qtable_value is None or q_value > max_qtable_value: #If a larger Q-table value is found
+                        max_qtable_value = q_value #Update the max Q-table value found
+                        best_choice = drone_pool[index[0]] #Update the associated drone
+            if best_choice is None: return self.drone #If all drone heads in the opposite direction from the depot, choose self
+            else: return best_choice
 
     def instantiate_qtable(self):
         """
