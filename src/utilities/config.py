@@ -1,6 +1,6 @@
 
 from src.routing_algorithms.georouting import GeoRouting
-from src.routing_algorithms.q_learning_stepwise_routing import QlearningStepwiseRouting
+from src.routing_algorithms.geo_q_learning_stepwise_routing import GEOQlearningStepwiseRouting
 from src.routing_algorithms.random_routing import RandomRouting
 from enum import Enum
 
@@ -56,9 +56,9 @@ SAVE_PLOT_DIR = "data/plots/"
 # ----------------------------- SIMULATION PARAMS. ---------------------------- #
 SIM_DURATION = 15000   # int: steps of simulation. # ***
 TS_DURATION = 0.150   # float: seconds duration of a step in seconds.
-SEED = 20         # int: seed of this simulation.
+SEED = 5         # int: seed of this simulation.
 
-N_DRONES = 30      # int: number of drones. # ***
+N_DRONES = 5      # int: number of drones. # ***
 ENV_WIDTH = 1500      # float: meters, width of environment.
 ENV_HEIGHT = 1500     # float: meters, height of environment.
 
@@ -87,7 +87,7 @@ DEPOT_CONTROL_PACKET_RANGE = 1000000 # float: meters, the range of the control p
 class RoutingAlgorithm(Enum):
     GEO = GeoRouting
     RND = RandomRouting
-    QLS = QlearningStepwiseRouting
+    GEOQLS = GEOQlearningStepwiseRouting
 
     @staticmethod
     def keylist():

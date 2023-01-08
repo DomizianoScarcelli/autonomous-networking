@@ -5,7 +5,7 @@ LABEL_SIZE = 32
 LEGEND_SIZE = 30
 TITLE_SIZE = 36
 TICKS_SIZE = 20
-OTHER_SIZES = 13
+OTHER_SIZES = 18
 
 METRICS_OF_INTEREST = [
     "number_of_packets_to_depot",
@@ -14,7 +14,7 @@ METRICS_OF_INTEREST = [
 
 METRIC_NAME = {
     "PTD": "Number Of Packets To Depot",
-    "PDT": "Packet Mean Delivery Time",
+    "PDT": "Packet Mean Delivery Time (in sec)",
     "MR": "Mean Number Of Relays"
 }
 
@@ -78,5 +78,14 @@ PLOT_DICT = {
         "label": "QLS",
         "x_ticks_positions": np.array(np.arange(5, 35, 5)),
         "full_name": "QLStepwiseRoutingProtocol"
+    },
+    "GEOQLS": {
+        "hatch": "",
+        "markers": "s",
+        "linestyle": "-",
+        "color": 'tab:brown',
+        "label": "GEOQLS",
+        "x_ticks_positions": np.array(np.arange(5, 35, 5)),
+        "full_name": "GEOQLStepwiseRoutingProtocol"
     }
 }
