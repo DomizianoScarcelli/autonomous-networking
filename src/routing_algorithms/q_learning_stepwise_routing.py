@@ -62,8 +62,7 @@ class QlearningStepwiseRouting(BASE_routing):
         else: #Otherwise, choose the action (the neighbor) with the highest QValue
             best_qvalue = None
             best_neighbor = None
-            for neighbor in self.drone.neighbor_table.neighbors_list:
-                neighbor = self.simulator.drones[neighbor]
+            for neighbor in self.drone.neighbor_table.get_drones():
                 if  best_neighbor == None or self.q_table[self.drone.identifier][neighbor.identifier] > best_qvalue:
                     best_neighbor = neighbor
                     best_qvalue = self.q_table[self.drone.identifier][neighbor.identifier]
