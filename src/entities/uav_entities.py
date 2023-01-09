@@ -343,7 +343,7 @@ class Depot(Entity):
 
         for pck in packets_to_offload:
 
-            if self.simulator.routing_algorithm.name not in "GEO" "RND" "GEOS" "QLS":
+            if self.simulator.routing_algorithm.name not in "GEO" "RND" "GEOS" "QLS" "GEOQLS":
 
                 feedback = 1
                 delivery_delay = cur_step - pck.event_ref.current_time
@@ -761,7 +761,7 @@ class Drone(Entity):
 
                 to_remove_packets += 1
 
-                if self.simulator.routing_algorithm.name not in "GEO" "RND" "GEOS" "QLS":
+                if self.simulator.routing_algorithm.name not in "GEO" "RND" "GEOS" "QLS" "GEOQLS":
 
                     feedback = -1
                     current_drone = self
