@@ -81,7 +81,7 @@ DRONE_MAX_ENERGY = 1000000           # int: max energy of a drone.
 DEPOT_COMMUNICATION_RANGE = 150  # float: meters, communication range of the depot.
 DEPOT_COO = (750, 0)             # (float, float): coordinates of the depot.
 
-DEPOT_CONTROL_PACKET_RANGE = 1000000 # float: meters, the range of the control packets of the depot.
+DEPOT_CONTROL_PACKET_RANGE = 500 # float: meters, the range of the control packets of the depot.
 
 
 # ------------------------------- ROUTING PARAMS. ------------------------------- #
