@@ -8,4 +8,4 @@ The work was carried out by:
 -   [Alessio Lucciola](https://github.com/AlessioLucciola)
 -   [Danilo Corsi](https://github.com/CorsiDanilo)
 
-Link of the [DroNET simulator repository](https://github.com/flaat/DroNETworkSimulator)
+Link of the [DroNET simulator repository](https://github.com/flaat/DroNETworkSimulator) where the protocols where implemented.
