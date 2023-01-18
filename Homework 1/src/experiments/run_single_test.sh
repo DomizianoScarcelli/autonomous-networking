@@ -1,0 +1,1 @@
+python -m src.experiments.experiment_ndrones -i_s 0 -e_s 2 -alg GEO -nd 30
